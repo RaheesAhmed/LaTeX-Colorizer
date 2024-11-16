@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "LaTeX Color Highlighter",
+  "version": "1.0",
+  "description": "Highlights LaTeX variables and text in mathematical articles",
+  "permissions": ["activeTab", "scripting", "storage", "contextMenus"],
+  "host_permissions": ["*://*.wikipedia.org/*"],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.wikipedia.org/*"],
+      "js": ["lib/katex.min.js", "content.js"],
+      "css": ["lib/katex.min.css", "styles/content.css"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["lib/*", "styles/*"],
+      "matches": ["*://*.wikipedia.org/*"]
+    }
+  ]
+}
