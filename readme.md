@@ -48,7 +48,3 @@ The LaTeX Color Highlighter is a Chrome extension designed to enhance the readab
 ## Contributing
 
 Feel free to fork this repository and submit pull requests. Any contributions to improve the extension are welcome!
-
-## License
-
-This project is licensed under the MIT License. See the LICENSE file for details.
