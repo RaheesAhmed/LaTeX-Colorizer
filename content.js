@@ -17,22 +17,47 @@ let currentColors = {
   epsilon: "#800080",
 };
 
-// Load saved colors on startup with error handling
-try {
-  chrome.storage.local.get("colors", (result) => {
-    if (chrome.runtime.lastError) {
-      console.error("Error loading colors:", chrome.runtime.lastError);
-      return;
-    }
-    if (result && result.colors) {
-      currentColors = result.colors;
-    }
-  });
-} catch (error) {
-  console.error("Failed to access storage:", error);
-}
+// Refactored color management logic
+const loadColors = () => {
+  try {
+    chrome.storage.local.get("colors", (result) => {
+      if (chrome.runtime.lastError) {
+        console.error("Error loading colors:", chrome.runtime.lastError);
+        return;
+      }
+      if (result && result.colors) {
+        currentColors = result.colors;
+      }
+    });
+  } catch (error) {
+    console.error("Failed to access storage:", error);
+  }
+};
 
-// Add storage for custom variables
+const saveColors = (colors) => {
+  try {
+    chrome.storage.local.set({ colors }, () => {
+      if (chrome.runtime.lastError) {
+        console.error("Error saving colors:", chrome.runtime.lastError);
+      }
+    });
+  } catch (error) {
+    console.error("Failed to save colors:", error);
+  }
+};
+
+const applyColors = (latex) => {
+  // Logic to apply colors to LaTeX content
+  return latex.replace(/x/g, `\\textcolor{${currentColors.x}}{x}`)
+              .replace(/y/g, `\\textcolor{${currentColors.y}}{y}`)
+              .replace(/\\beta/g, `\\textcolor{${currentColors.beta}}{\\beta}`)
+              .replace(/\\epsilon/g, `\\textcolor{${currentColors.epsilon}}{\\epsilon}`);
+};
+
+// Load colors on startup
+loadColors();
+
+// Store custom variables
 let currentCustomVariables = {};
 
 // Load saved custom variables on startup
@@ -85,10 +110,27 @@ async function processLatexElements() {
 // Process individual LaTeX element
 async function processElement(element) {
   try {
+    if (!element) {
+      console.warn("Received null or undefined element");
+      return;
+    }
+
+    console.log("🔍 Processing element:", {
+      tagName: element.tagName,
+      className: element.className,
+      id: element.id,
+    });
+
     let latexSource = extractLatexSource(element);
-    if (!latexSource) return;
+    console.log("📝 Extracted LaTeX source:", latexSource);
+
+    if (!latexSource) {
+      console.warn("No LaTeX source found in element:", element);
+      return;
+    }
 
     latexSource = cleanLatexSource(latexSource);
+    console.log("🧹 Cleaned LaTeX source:", latexSource);
 
     // Add validation for LaTeX source
     if (!isValidLatex(latexSource)) {
@@ -97,6 +139,13 @@ async function processElement(element) {
     }
 
     const colorizedLatex = await colorizeLatex(latexSource);
+    console.log("🎨 Colorized LaTeX:", colorizedLatex);
+
+    if (!colorizedLatex) {
+      console.warn("Failed to colorize LaTeX:", latexSource);
+      return;
+    }
+
     await insertColoredVersion(element, colorizedLatex);
   } catch (error) {
     console.error("Process error:", error, element);
@@ -140,44 +189,33 @@ async function colorizeLatex(source) {
   try {
     let colorized = source;
 
-    // Safer regex patterns for variable detection with proper KaTeX color syntax
+    // Use KaTeX's native color syntax
     const variableMappings = {
-      // x variables with subscripts - using direct color command
-      "(?<!\\\\)x(?![a-zA-Z])": `\\textcolor{${currentColors.x}}{x}`,
-      "x_[{]?\\d+[}]?": (match) => `\\textcolor{${currentColors.x}}{${match}}`,
-      "x_[{]?[a-z][}]?": (match) => `\\textcolor{${currentColors.x}}{${match}}`,
+      // Single variables with proper color syntax
+      "(?<!\\\\)x(?![a-zA-Z0-9])": `\\color{${currentColors.x}}{x}`,
+      "(?<!\\\\)y(?![a-zA-Z0-9])": `\\color{${currentColors.y}}{y}`,
 
-      // y variables with subscripts
-      "(?<!\\\\)y(?![a-zA-Z])": `\\textcolor{${currentColors.y}}{y}`,
-      "y_[{]?\\d+[}]?": (match) => `\\textcolor{${currentColors.y}}{${match}}`,
-      "y_[{]?[a-z][}]?": (match) => `\\textcolor{${currentColors.y}}{${match}}`,
-
-      // Greek letters
-      "\\\\beta(?![a-zA-Z])": `\\textcolor{${currentColors.beta}}{\\beta}`,
-      "\\\\epsilon(?![a-zA-Z])": `\\textcolor{${currentColors.epsilon}}{\\epsilon}`,
+      // Greek letters with proper color syntax
+      "\\\\beta(?![a-zA-Z])": `\\color{${currentColors.beta}}{\\beta}`,
+      "\\\\epsilon(?![a-zA-Z])": `\\color{${currentColors.epsilon}}{\\epsilon}`,
     };
 
-    // Add custom variables with safer patterns
+    // Add custom variables with proper color syntax
     if (currentCustomVariables) {
       Object.entries(currentCustomVariables).forEach(([variable, color]) => {
         const escapedVar = variable.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
         variableMappings[
-          `(?<!\\\\)${escapedVar}(?![a-zA-Z])`
-        ] = `\\textcolor{${color}}{${variable}}`;
+          `(?<!\\\\)${escapedVar}(?![a-zA-Z0-9])`
+        ] = `\\color{${color}}{${variable}}`;
       });
     }
 
-    // Apply colorization with safer regex
+    // Apply colorization
     Object.entries(variableMappings).forEach(([pattern, replacement]) => {
       const regex = new RegExp(pattern, "g");
-      if (typeof replacement === "function") {
-        colorized = colorized.replace(regex, replacement);
-      } else {
-        colorized = colorized.replace(regex, replacement);
-      }
+      colorized = colorized.replace(regex, replacement);
     });
 
-    // Don't wrap the entire expression in a group
     return colorized;
   } catch (error) {
     console.error("Colorize error:", error);
@@ -208,42 +246,48 @@ async function insertColoredVersion(element, colorizedLatex) {
 
 // Render using KaTeX
 async function renderWithKaTeX(element, latex, isDisplayMode) {
+  if (!element || !latex) {
+    console.error("Invalid input to renderWithKaTeX:", { element, latex });
+    return Promise.reject(new Error("Invalid input to renderWithKaTeX"));
+  }
+
   return new Promise((resolve, reject) => {
     try {
       katex.render(latex, element, {
         throwOnError: false,
         errorColor: "#cc0000",
-        displayMode: isDisplayMode,
-        output: "html",
+        displayMode: isDisplayMode || false,
         trust: true,
-        strict: "ignore", // Changed from false to "ignore"
+        strict: false,
         macros: {
-          "\\epsilon": "\\varepsilon",
           "\\R": "\\mathbb{R}",
           "\\N": "\\mathbb{N}",
           "\\Z": "\\mathbb{Z}",
-          // Add color command alias
-          "\\textcolor": "\\color",
+          // Add color macro
+          "\\color": "\\textcolor",
         },
-        minRuleThickness: 0.05,
-        maxSize: 100,
-        maxExpand: 1000,
       });
       resolve();
     } catch (error) {
       console.error("KaTeX render error:", error);
-      // Fallback rendering without colors
+      // Fallback to original LaTeX
       try {
-        const strippedLatex = latex.replace(/\\textcolor{.*?}{(.*?)}/g, "$1");
+        // Strip color commands and try again
+        const strippedLatex = latex
+          .replace(/\\color{[^}]*}/g, "")
+          .replace(/\\textcolor{[^}]*}{([^}]*)}/g, "$1");
+
         katex.render(strippedLatex, element, {
           throwOnError: false,
           errorColor: "#cc0000",
-          displayMode: isDisplayMode,
-          strict: "ignore",
+          displayMode: isDisplayMode || false,
+          strict: false,
         });
         resolve();
       } catch (fallbackError) {
-        reject(fallbackError);
+        console.error("Fallback render error:", fallbackError);
+        element.textContent = latex;
+        resolve();
       }
     }
   });
@@ -497,3 +541,94 @@ function isValidLatex(latex) {
   }
   return braceCount === 0;
 }
+
+// Update the loadKaTeXFonts function to handle font loading more robustly
+function loadKaTeXFonts() {
+  const fontFiles = [
+    "KaTeX_Main-Regular",
+    "KaTeX_Math-Italic",
+    "KaTeX_Size1-Regular",
+    "KaTeX_Size2-Regular",
+    "KaTeX_Size3-Regular",
+    "KaTeX_Size4-Regular",
+    "KaTeX_AMS-Regular",
+    "KaTeX_Caligraphic-Regular",
+    "KaTeX_Fraktur-Regular",
+    "KaTeX_SansSerif-Regular",
+    "KaTeX_Script-Regular",
+    "KaTeX_Typewriter-Regular",
+  ];
+
+  const fontFormats = ["woff2", "woff", "ttf"];
+
+  // Add a style element for font-face declarations
+  const style = document.createElement("style");
+  document.head.appendChild(style);
+
+  fontFiles.forEach((fontFile) => {
+    fontFormats.forEach((format) => {
+      try {
+        const fontUrl = chrome.runtime.getURL(`fonts/${fontFile}.${format}`);
+        // Add font-face declaration
+        style.sheet.insertRule(`
+          @font-face {
+            font-family: '${fontFile}';
+            src: url('${fontUrl}') format('${format}');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+          }
+        `);
+      } catch (err) {
+        console.warn(`Failed to load font ${fontFile}.${format}:`, err);
+      }
+    });
+  });
+}
+
+// Add this function to check if KaTeX is properly loaded
+function checkKaTeXLoaded() {
+  return new Promise((resolve, reject) => {
+    if (typeof katex !== "undefined") {
+      resolve(true);
+      return;
+    }
+
+    // Wait for KaTeX to load
+    let attempts = 0;
+    const maxAttempts = 10;
+    const interval = setInterval(() => {
+      if (typeof katex !== "undefined") {
+        clearInterval(interval);
+        resolve(true);
+        return;
+      }
+
+      attempts++;
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        reject(new Error("KaTeX failed to load"));
+      }
+    }, 500);
+  });
+}
+
+// Update the initialization code
+async function initializeKaTeX() {
+  try {
+    await checkKaTeXLoaded();
+    loadKaTeXFonts();
+    debouncedProcess();
+  } catch (error) {
+    console.error("Failed to initialize KaTeX:", error);
+  }
+}
+
+// Call initialization when the document is ready
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initializeKaTeX);
+} else {
+  initializeKaTeX();
+}
+
+

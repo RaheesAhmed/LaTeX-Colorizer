@@ -170,7 +170,6 @@ async function applyColors() {
 }
 
 // Event Listeners
-document.addEventListener("DOMContentLoaded", loadSavedColors);
 applyButton.addEventListener("click", applyColors);
 
 // Real-time preview

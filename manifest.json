@@ -6,7 +6,12 @@
   "permissions": ["activeTab", "scripting", "storage", "contextMenus"],
   "host_permissions": ["*://*.wikipedia.org/*"],
   "action": {
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "/icons/icon-16.png",
+      "48": "/icons/icon-48.png",
+      "128": "/icons/icon-128.png"
+    }
   },
   "content_scripts": [
     {
@@ -17,7 +22,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["lib/*", "styles/*"],
+      "resources": ["lib/fonts/*", "fonts/*", "lib/*", "styles/*"],
       "matches": ["*://*.wikipedia.org/*"]
     }
   ]
