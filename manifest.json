@@ -15,13 +15,15 @@
         "lib/katex.min.css",
         "css/content.css",
         "css/variable-manager.css",
-        "css/section-manager.css"
+        "css/section-manager.css",
+        "css/color-manager.css"
       ],
       "js": [
         "lib/katex.min.js",
         "js/content.js",
         "js/variable-manager.js",
-        "js/section-manager.js"
+        "js/section-manager.js",
+        "js/color-manager.js"
       ]
     }
   ],
