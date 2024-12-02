@@ -1,0 +1,175 @@
+/* Section Control Panel */
+.section-control-panel {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 320px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Panel Header */
+.section-panel-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-panel-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.section-panel-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.section-panel-actions button {
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.close-section-panel {
+  background: none !important;
+  border: none !important;
+  font-size: 20px !important;
+  color: #666;
+  padding: 4px;
+  line-height: 1;
+}
+
+/* Section Tree */
+.section-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.section-item {
+  margin: 2px 0;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.section-toggle {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #666;
+  user-select: none;
+}
+
+.section-toggle:not(.has-children) {
+  visibility: hidden;
+}
+
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  cursor: pointer;
+}
+
+.section-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.section-title {
+  flex: 1;
+  font-size: 14px;
+  color: #333;
+}
+
+.formula-count {
+  background: #eee;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 12px;
+  color: #666;
+}
+
+/* Section Children */
+.section-children {
+  margin-left: 20px;
+}
+
+.section-item.collapsed > .section-children {
+  display: none;
+}
+
+/* Rules Section */
+.section-rules {
+  padding: 12px 16px;
+  border-top: 1px solid #eee;
+}
+
+.section-rules h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #333;
+}
+
+.rule-list {
+  margin-bottom: 8px;
+}
+
+.add-rule {
+  width: 100%;
+  padding: 8px;
+  background: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.add-rule:hover {
+  background: #1976d2;
+}
+
+/* Drag Selection Styles */
+.section-item.drag-select {
+  background: rgba(33, 150, 243, 0.1);
+}
+
+/* Disabled Section Styles */
+.section-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .section-control-panel {
+    width: 90%;
+    max-width: 320px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+}

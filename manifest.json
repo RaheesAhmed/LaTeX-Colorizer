@@ -14,9 +14,15 @@
       "css": [
         "lib/katex.min.css",
         "css/content.css",
-        "css/variable-manager.css"
+        "css/variable-manager.css",
+        "css/section-manager.css"
       ],
-      "js": ["lib/katex.min.js", "js/content.js", "js/variable-manager.js"]
+      "js": [
+        "lib/katex.min.js",
+        "js/content.js",
+        "js/variable-manager.js",
+        "js/section-manager.js"
+      ]
     }
   ],
   "action": {
