@@ -1,0 +1,33 @@
+/* Styles for enhanced math formulas */
+.katex-display {
+  margin: 1em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+}
+
+.katex {
+  font-size: 1.1em;
+}
+
+/* Style for inline math */
+.mwe-math-fallback-image-inline .katex {
+  font-size: 1em;
+}
+
+/* Hover effect for formulas */
+.mwe-math-element:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+  border-radius: 4px;
+}
+
+/* Error state */
+.math-error {
+  color: #d32f2f;
+  border: 1px solid #ffcdd2;
+  background-color: #ffebee;
+  padding: 8px;
+  border-radius: 4px;
+  margin: 4px 0;
+}

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Wikipedia Math Enhancer</title>
+    <link rel="stylesheet" href="../css/popup.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h2>Wikipedia Math Enhancer</h2>
+      <div class="settings">
+        <label>
+          <input type="checkbox" id="enabled" checked />
+          Enable Formula Enhancement
+        </label>
+        <label>
+          <input type="checkbox" id="autoRender" checked />
+          Auto-render Formulas
+        </label>
+        <div class="display-mode">
+          <label>Display Mode:</label>
+          <select id="displayMode">
+            <option value="block">Block</option>
+            <option value="inline">Inline</option>
+          </select>
+        </div>
+      </div>
+      <div class="status">
+        <p id="status-message">Ready to enhance math formulas</p>
+      </div>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>
