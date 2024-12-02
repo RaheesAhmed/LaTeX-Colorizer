@@ -11,8 +11,12 @@
   "content_scripts": [
     {
       "matches": ["*://*.wikipedia.org/*"],
-      "css": ["lib/katex.min.css", "css/content.css"],
-      "js": ["lib/katex.min.js", "js/content.js"]
+      "css": [
+        "lib/katex.min.css",
+        "css/content.css",
+        "css/variable-manager.css"
+      ],
+      "js": ["lib/katex.min.js", "js/content.js", "js/variable-manager.js"]
     }
   ],
   "action": {
