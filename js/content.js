@@ -1,274 +1,437 @@
-// Content script for Wikipedia Math Formula Enhancer
+// Content script for LaTeX Formula Colorizer
 
-class WikiMathEnhancer {
-  constructor() {
-    this.mathElements = [];
-    this.variableMap = new Map();
-    this.renderQueue = [];
-    this.observer = null;
-    this.settings = {
-      enabled: true,
-      autoRender: true,
-      displayMode: "block",
-    };
+// Store for formula data
+const formulaStore = {
+  formulas: new Map(),
+  variables: new Set(),
+  sections: new Map(),
+  selectedVariables: new Set(),
+};
+
+// Initialize when DOM is ready
+function init() {
+  console.log("Initializing LaTeX Formula Colorizer...");
+
+  const mathElements = document.querySelectorAll(".mwe-math-element");
+  console.log(`Found ${mathElements.length} math elements`);
+
+  if (mathElements.length === 0) {
+    console.log("No math elements found on page");
+    return;
   }
 
-  async init() {
-    await this.loadSettings();
-    if (!this.settings.enabled) return;
+  detectFormulas();
+  setupControls();
 
-    this.setupMutationObserver();
-    this.findMathElements();
-    await this.processFormulas();
-  }
+  // Listen for messages from popup
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.log("Received message:", message);
 
-  async loadSettings() {
-    return new Promise((resolve) => {
-      chrome.storage.sync.get(
-        ["enabled", "autoRender", "displayMode"],
-        (data) => {
-          this.settings = {
-            enabled: data.enabled ?? true,
-            autoRender: data.autoRender ?? true,
-            displayMode: data.displayMode ?? "block",
-          };
-          resolve();
-        }
-      );
-    });
-  }
-
-  setupMutationObserver() {
-    this.observer = new MutationObserver((mutations) => {
-      let shouldProcess = false;
-      for (const mutation of mutations) {
-        if (this.containsMathContent(mutation)) {
-          shouldProcess = true;
-          break;
-        }
-      }
-      if (shouldProcess) {
-        this.findMathElements();
-        this.processFormulas();
-      }
-    });
-
-    this.observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-    });
-  }
-
-  containsMathContent(mutation) {
-    const mathSelectors = [
-      ".mwe-math-element",
-      ".mwe-math-fallback-image-inline",
-      ".tex",
-    ];
-    if (mutation.type === "childList") {
-      for (const node of mutation.addedNodes) {
-        if (node.nodeType === Node.ELEMENT_NODE) {
-          if (
-            mathSelectors.some(
-              (selector) =>
-                node.matches?.(selector) || node.querySelector?.(selector)
-            )
-          ) {
-            return true;
-          }
-        }
-      }
-    }
-    return false;
-  }
-
-  findMathElements() {
-    const newElements = [
-      ...document.querySelectorAll(".mwe-math-element"),
-      ...document.querySelectorAll(".mwe-math-fallback-image-inline"),
-      ...document.querySelectorAll(".tex"),
-    ].filter((element) => !element.hasAttribute("data-math-enhanced"));
-
-    this.mathElements.push(...newElements);
-    this.renderQueue.push(...newElements);
-  }
-
-  async processFormulas() {
-    const batchSize = 5;
-    while (this.renderQueue.length > 0) {
-      const batch = this.renderQueue.splice(0, batchSize);
-      await Promise.all(batch.map((element) => this.enhanceFormula(element)));
-      // Small delay to prevent UI blocking
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    }
-  }
-
-  async enhanceFormula(element) {
-    try {
-      const texContent = this.extractTeX(element);
-      if (!texContent) return;
-
-      const variables = this.identifyVariables(texContent);
-      this.updateVariableMap(variables);
-
-      const isInline = element.classList.contains(
-        "mwe-math-fallback-image-inline"
-      );
-      const renderedMath = await this.renderFormula(texContent, isInline);
-
-      element.innerHTML = renderedMath;
-      element.setAttribute("data-math-enhanced", "true");
-      element.setAttribute("data-formula", texContent);
-
-      this.attachFormulaHandlers(element);
-    } catch (error) {
-      console.warn("Error enhancing formula:", error);
-      this.handleRenderError(element, error);
-    }
-  }
-
-  extractTeX(element) {
-    // Try different methods to extract TeX content
-    const texContent =
-      element.getAttribute("alt") ||
-      element.getAttribute("data-tex") ||
-      element.textContent;
-
-    if (!texContent) return null;
-
-    // Clean up Wikipedia-specific LaTeX syntax
-    return this.cleanTeXContent(texContent);
-  }
-
-  cleanTeXContent(tex) {
-    // Handle Wikipedia's specific LaTeX syntax
-    return tex
-      .replace(/\\begin{(?:align|equation|gather)}/g, "")
-      .replace(/\\end{(?:align|equation|gather)}/g, "")
-      .replace(/\\displaystyle/g, "")
-      .trim();
-  }
-
-  identifyVariables(texContent) {
-    const variables = new Set();
-    // Match single letters that are likely variables
-    const varRegex = /(?<!\\)[a-zA-Z](?!\w)/g;
-    // Match common mathematical functions
-    const mathFuncs = [
-      "sin",
-      "cos",
-      "tan",
-      "log",
-      "ln",
-      "exp",
-      "lim",
-      "sum",
-      "int",
-    ];
-
-    const matches = texContent.match(varRegex) || [];
-    for (const match of matches) {
-      // Exclude if it's part of a math function
-      if (!mathFuncs.some((func) => texContent.includes(`\\${func}`))) {
-        variables.add(match);
-      }
-    }
-    return variables;
-  }
-
-  updateVariableMap(variables) {
-    variables.forEach((variable) => {
-      if (!this.variableMap.has(variable)) {
-        this.variableMap.set(variable, {
-          occurrences: 0,
-          formulas: new Set(),
+    switch (message.type) {
+      case "settingsChanged":
+        handleSettingsChange(message.settings);
+        sendResponse({ success: true });
+        break;
+      case "getState":
+        sendResponse({
+          formulas: Array.from(formulaStore.formulas.values()),
+          variables: Array.from(formulaStore.variables),
+          sections: Array.from(formulaStore.sections.values()),
+          selectedVariables: Array.from(formulaStore.selectedVariables),
         });
-      }
-      const varInfo = this.variableMap.get(variable);
-      varInfo.occurrences++;
-    });
-  }
+        break;
+    }
+    return true;
+  });
+}
 
-  async renderFormula(texContent, isInline) {
-    return katex.renderToString(texContent, {
-      throwOnError: false,
-      errorColor: "#cc0000",
-      displayMode: !isInline,
-      strict: false,
-      trust: true,
-      macros: this.getCustomMacros(),
-    });
-  }
+// Handle settings changes
+function handleSettingsChange(settings) {
+  console.log("Settings changed:", settings);
 
-  getCustomMacros() {
-    // Common Wikipedia math macros
-    return {
-      "\\R": "\\mathbb{R}",
-      "\\N": "\\mathbb{N}",
-      "\\Z": "\\mathbb{Z}",
-      "\\Q": "\\mathbb{Q}",
-      "\\C": "\\mathbb{C}",
-    };
-  }
-
-  attachFormulaHandlers(element) {
-    element.addEventListener("click", (e) => {
-      if (e.ctrlKey || e.metaKey) {
-        this.showFormulaDetails(element);
-      }
-    });
-
-    element.title = "Ctrl+Click to show formula details";
-  }
-
-  showFormulaDetails(element) {
-    const texContent = element.getAttribute("data-formula");
-    const variables = this.identifyVariables(texContent);
-
-    const details = document.createElement("div");
-    details.className = "math-details";
-    details.innerHTML = `
-      <div class="math-details-content">
-        <h3>Formula Details</h3>
-        <p><strong>LaTeX:</strong> <code>${texContent}</code></p>
-        <p><strong>Variables:</strong> ${
-          Array.from(variables).join(", ") || "None"
-        }</p>
-      </div>
-    `;
-
-    // Position the details popup
-    const rect = element.getBoundingClientRect();
-    details.style.position = "absolute";
-    details.style.top = `${rect.bottom + window.scrollY}px`;
-    details.style.left = `${rect.left + window.scrollX}px`;
-
-    document.body.appendChild(details);
-
-    // Remove on click outside
-    const removeDetails = (e) => {
-      if (!details.contains(e.target)) {
-        details.remove();
-        document.removeEventListener("click", removeDetails);
-      }
-    };
-    setTimeout(() => document.addEventListener("click", removeDetails), 0);
-  }
-
-  handleRenderError(element, error) {
-    element.classList.add("math-error");
-    element.innerHTML = `
-      <div class="math-error-content">
-        <span>Error rendering formula</span>
-        <small>${error.message}</small>
-      </div>
-    `;
+  if (settings.action === "clearHighlights") {
+    console.log("Clearing all highlights");
+    formulaStore.selectedVariables.clear();
+    highlightVariables();
+  } else if (settings.action === "applyHighlights") {
+    console.log("Applying highlights to all formulas");
+    highlightVariables();
   }
 }
 
-// Initialize when DOM is ready
-document.addEventListener("DOMContentLoaded", async () => {
-  const enhancer = new WikiMathEnhancer();
-  await enhancer.init();
-});
+// Detect and process formulas
+function detectFormulas() {
+  console.log("Detecting formulas...");
+  const mathElements = document.querySelectorAll(".mwe-math-element");
+
+  mathElements.forEach((element, index) => {
+    try {
+      // Get LaTeX content
+      const mathML = element.querySelector(".mwe-math-mathml-a11y");
+      const fallbackImg = element.querySelector(
+        ".mwe-math-fallback-image-inline"
+      );
+
+      let latex = "";
+      if (mathML) {
+        const annotation = mathML.querySelector(
+          'annotation[encoding="application/x-tex"]'
+        );
+        latex = annotation ? annotation.textContent : "";
+      } else if (fallbackImg) {
+        latex = fallbackImg.getAttribute("alt");
+      }
+
+      if (latex) {
+        console.log(`Processing formula ${index}:`, latex);
+
+        const id = `formula-${index}`;
+        element.setAttribute("data-formula-id", id);
+
+        // Process formula
+        const variables = parseVariables(latex);
+        console.log(`Found variables:`, variables);
+
+        const formula = {
+          id,
+          latex,
+          element,
+          variables,
+          section: findSection(element),
+        };
+
+        // Store formula data
+        formulaStore.formulas.set(id, formula);
+        variables.forEach((v) => formulaStore.variables.add(v));
+
+        // Remove existing listeners to prevent duplicates
+        element.removeEventListener("click", handleFormulaClick);
+        element.removeEventListener("mouseenter", showTooltip);
+        element.removeEventListener("mouseleave", hideTooltip);
+
+        // Add click handler
+        element.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log("Formula clicked:", id);
+          handleFormulaClick(formula);
+        });
+
+        // Add hover handler
+        element.addEventListener("mouseenter", () => {
+          console.log("Formula hover:", id);
+          showTooltip(formula);
+        });
+
+        element.addEventListener("mouseleave", () => {
+          console.log("Formula unhover:", id);
+          hideTooltip();
+        });
+
+        // Add visual indicator that element is interactive
+        element.style.cursor = "pointer";
+        element.classList.add("formula-interactive");
+      }
+    } catch (error) {
+      console.error("Error processing formula:", error);
+    }
+  });
+
+  console.log("Formula detection complete");
+  console.log("Total formulas:", formulaStore.formulas.size);
+  console.log("Total variables:", formulaStore.variables.size);
+}
+
+// Parse variables from LaTeX
+function parseVariables(latex) {
+  const variables = new Set();
+
+  // Variable patterns
+  const patterns = [
+    // Single letters with optional subscripts
+    /(?<!\\)[a-zA-Z](?:_[a-zA-Z0-9]+)?/g,
+    // Greek letters
+    /\\(?:alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|omicron|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega)(?:_[a-zA-Z0-9]+)?/g,
+    // Vector/matrix variables
+    /\\(?:vec|mathbf)\{([a-zA-Z])\}/g,
+  ];
+
+  patterns.forEach((pattern) => {
+    const matches = latex.matchAll(pattern);
+    for (const match of matches) {
+      const variable = cleanVariable(match[0]);
+      if (variable && !isLatexCommand(variable)) {
+        variables.add(variable);
+      }
+    }
+  });
+
+  return Array.from(variables);
+}
+
+// Clean variable name
+function cleanVariable(variable) {
+  return variable
+    .replace(/^\\/, "")
+    .replace(/\{|\}/g, "")
+    .replace(/^(mathbf|vec)/, "")
+    .trim();
+}
+
+// Check for LaTeX commands
+function isLatexCommand(str) {
+  const commands = [
+    "sum",
+    "int",
+    "frac",
+    "sqrt",
+    "text",
+    "mathbf",
+    "mathrm",
+    "left",
+    "right",
+    "begin",
+    "end",
+    "cdot",
+    "times",
+  ];
+  return commands.includes(str.toLowerCase());
+}
+
+// Handle formula click
+function handleFormulaClick(formula) {
+  console.log("Handling formula click:", formula);
+
+  // Remove any existing containers
+  const existingContainer = document.querySelector(".math-variable-container");
+  if (existingContainer) {
+    existingContainer.remove();
+  }
+
+  const variableList = document.createElement("div");
+  variableList.className = "math-variable-list";
+
+  formula.variables.forEach((variable) => {
+    const variableEl = document.createElement("div");
+    variableEl.className = "math-variable-item";
+    variableEl.innerHTML = `
+      <label>
+        <input type="checkbox" value="${variable}" 
+          ${formulaStore.selectedVariables.has(variable) ? "checked" : ""}>
+        <span class="variable-name">${variable}</span>
+        <span class="variable-color" style="background-color: ${getVariableColor(
+          variable
+        )}"></span>
+      </label>
+    `;
+
+    const checkbox = variableEl.querySelector("input");
+    checkbox.addEventListener("change", (e) => {
+      console.log(
+        `Variable ${variable} ${e.target.checked ? "selected" : "deselected"}`
+      );
+      if (e.target.checked) {
+        formulaStore.selectedVariables.add(variable);
+      } else {
+        formulaStore.selectedVariables.delete(variable);
+      }
+      highlightVariables();
+    });
+
+    variableList.appendChild(variableEl);
+  });
+
+  const controls = document.createElement("div");
+  controls.className = "math-controls";
+  controls.innerHTML = `
+    <button class="select-all">Select All</button>
+    <button class="clear-all">Clear All</button>
+  `;
+
+  controls.querySelector(".select-all").addEventListener("click", () => {
+    console.log("Selecting all variables");
+    formula.variables.forEach((v) => formulaStore.selectedVariables.add(v));
+    variableList
+      .querySelectorAll("input")
+      .forEach((input) => (input.checked = true));
+    highlightVariables();
+  });
+
+  controls.querySelector(".clear-all").addEventListener("click", () => {
+    console.log("Clearing all variables");
+    formulaStore.selectedVariables.clear();
+    variableList
+      .querySelectorAll("input")
+      .forEach((input) => (input.checked = false));
+    highlightVariables();
+  });
+
+  const container = document.createElement("div");
+  container.className = "math-variable-container";
+  container.appendChild(variableList);
+  container.appendChild(controls);
+
+  document.body.appendChild(container);
+  positionElement(container, formula.element);
+
+  // Close container when clicking outside
+  document.addEventListener(
+    "click",
+    (e) => {
+      if (
+        !container.contains(e.target) &&
+        !formula.element.contains(e.target)
+      ) {
+        container.remove();
+      }
+    },
+    { once: true }
+  );
+}
+
+// Show formula tooltip
+function showTooltip(formula) {
+  // Remove any existing tooltips
+  hideTooltip();
+
+  const tooltip = document.createElement("div");
+  tooltip.className = "math-tooltip";
+  tooltip.innerHTML = `
+    <div class="tooltip-content">
+      <div class="tooltip-latex">${formula.latex}</div>
+      <div class="tooltip-variables">
+        Variables: ${formula.variables.join(", ")}
+      </div>
+      ${
+        formula.section
+          ? `
+        <div class="tooltip-section">
+          Section: ${formula.section.title}
+        </div>
+      `
+          : ""
+      }
+    </div>
+  `;
+
+  document.body.appendChild(tooltip);
+  positionElement(tooltip, formula.element);
+}
+
+// Hide tooltip
+function hideTooltip() {
+  const tooltips = document.querySelectorAll(".math-tooltip");
+  tooltips.forEach((tooltip) => tooltip.remove());
+}
+
+// Position element relative to target
+function positionElement(element, target) {
+  const rect = target.getBoundingClientRect();
+  const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+  const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+
+  element.style.position = "absolute";
+  element.style.top = `${rect.bottom + scrollTop}px`;
+  element.style.left = `${rect.left + scrollLeft}px`;
+
+  // Adjust if off screen
+  const bounds = element.getBoundingClientRect();
+  if (bounds.right > window.innerWidth) {
+    element.style.left = `${
+      window.innerWidth - bounds.width - 10 + scrollLeft
+    }px`;
+  }
+  if (bounds.bottom > window.innerHeight) {
+    element.style.top = `${rect.top + scrollTop - bounds.height}px`;
+  }
+}
+
+// Get color for variable
+function getVariableColor(variable) {
+  let hash = 0;
+  for (let i = 0; i < variable.length; i++) {
+    hash = (hash << 5) - hash + variable.charCodeAt(i);
+    hash = hash & hash;
+  }
+  const hue = Math.abs(hash % 360);
+  return `hsl(${hue}, 70%, 45%)`;
+}
+
+// Highlight selected variables
+function highlightVariables() {
+  console.log(
+    "Highlighting variables:",
+    Array.from(formulaStore.selectedVariables)
+  );
+
+  // Clear all highlights
+  document.querySelectorAll(".formula-highlight").forEach((el) => {
+    el.classList.remove("formula-highlight");
+  });
+
+  // Add highlights for selected variables
+  if (formulaStore.selectedVariables.size > 0) {
+    formulaStore.formulas.forEach((formula) => {
+      const hasSelected = formula.variables.some((v) =>
+        formulaStore.selectedVariables.has(v)
+      );
+      if (hasSelected) {
+        formula.element.classList.add("formula-highlight");
+      }
+    });
+  }
+}
+
+// Setup controls panel
+function setupControls() {
+  console.log("Setting up global controls");
+
+  // Remove existing controls if any
+  const existingControls = document.querySelector(".math-global-controls");
+  if (existingControls) {
+    existingControls.remove();
+  }
+
+  const controls = document.createElement("div");
+  controls.className = "math-global-controls";
+  controls.innerHTML = `
+    <div class="controls-header">
+      <h3>Formula Controls</h3>
+      <button class="minimize-controls">−</button>
+    </div>
+    <div class="controls-content">
+      <div class="variable-filters"></div>
+      <div class="section-filters"></div>
+      <div class="control-buttons">
+        <button class="clear-all-highlights">Clear All</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(controls);
+
+  // Add event listeners
+  controls
+    .querySelector(".minimize-controls")
+    .addEventListener("click", (e) => {
+      const content = controls.querySelector(".controls-content");
+      content.style.display =
+        content.style.display === "none" ? "block" : "none";
+      e.target.textContent = content.style.display === "none" ? "+" : "−";
+    });
+
+  controls
+    .querySelector(".clear-all-highlights")
+    .addEventListener("click", () => {
+      console.log("Clearing all highlights globally");
+      formulaStore.selectedVariables.clear();
+      highlightVariables();
+    });
+}
+
+// Start extension
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}

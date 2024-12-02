@@ -1,109 +1,369 @@
-/* Styles for enhanced math formulas */
-.katex-display {
-  margin: 1em 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding-top: 0.5em;
-  padding-bottom: 0.5em;
+/* Premium UI Variables */
+:root {
+  /* Colors */
+  --color-primary: #1a2b4c;
+  --color-secondary: #e5e9f0;
+  --color-accent: #b8a355;
+  --color-success: #10b981;
+  --color-text: #0f172a;
+  --color-subtle: #64748b;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.08);
+
+  /* Spacing */
+  --space-2: 2px;
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-16: 16px;
+  --space-24: 24px;
+  --space-32: 32px;
+
+  /* Transitions */
+  --transition-all: all 0.2s ease-in-out;
 }
 
-.katex {
-  font-size: 1.1em;
+/* Base Formula Styles */
+.mwe-math-element {
+  cursor: pointer;
+  padding: var(--space-8);
+  border-radius: 6px;
+  transition: var(--transition-all);
+  position: relative;
+  border: 2px solid transparent;
+  background: white;
+  box-shadow: var(--shadow-sm);
 }
 
-/* Style for inline math */
-.mwe-math-fallback-image-inline .katex {
-  font-size: 1em;
-}
-
-/* Hover effect for formulas */
 .mwe-math-element:hover {
-  background-color: rgba(0, 0, 0, 0.02);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-secondary);
+}
+
+.mwe-math-element.formula-highlight {
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-md);
+  background-color: rgba(184, 163, 85, 0.05);
+}
+
+/* Variable Selection Container */
+.math-variable-container {
+  position: absolute;
+  z-index: 1000;
+  background: white;
+  border: 2px solid var(--color-secondary);
+  border-radius: 6px;
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-16);
+  min-width: 280px;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+}
+
+.math-variable-list {
+  margin-bottom: var(--space-16);
+}
+
+.math-variable-item {
+  padding: var(--space-8) 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.math-variable-item:last-child {
+  border-bottom: none;
+}
+
+.math-variable-item label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--color-text);
+  font-weight: 400;
+  transition: var(--transition-all);
+}
+
+.math-variable-item label:hover {
+  color: var(--color-primary);
+}
+
+.math-variable-item input[type="checkbox"] {
+  margin: 0;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-secondary);
   border-radius: 4px;
   cursor: pointer;
 }
 
-/* Error state */
-.math-error {
-  color: #d32f2f;
-  border: 1px solid #ffcdd2;
-  background-color: #ffebee;
-  padding: 8px;
+.variable-name {
+  flex: 1;
+  font-weight: 500;
+}
+
+.variable-color {
+  width: 16px;
+  height: 16px;
   border-radius: 4px;
-  margin: 4px 0;
+  border: 2px solid var(--color-secondary);
+  transition: var(--transition-all);
 }
 
-.math-error-content {
+/* Controls */
+.math-controls {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  gap: var(--space-8);
+  padding-top: var(--space-16);
+  border-top: 1px solid var(--color-secondary);
+  margin-top: var(--space-16);
 }
 
-.math-error-content small {
-  color: #666;
+.math-controls button {
+  flex: 1;
+  padding: var(--space-8) var(--space-16);
+  border: 2px solid var(--color-primary);
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-primary);
+  transition: var(--transition-all);
 }
 
-/* Formula details popup */
-.math-details {
+.math-controls button:hover {
+  background: var(--color-primary);
+  color: white;
+}
+
+/* Tooltip */
+.math-tooltip {
   position: absolute;
   z-index: 1000;
   background: white;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  padding: 16px;
-  max-width: 400px;
+  border: 2px solid var(--color-secondary);
+  border-radius: 6px;
+  box-shadow: var(--shadow-md);
+  padding: var(--space-16);
   font-size: 14px;
+  max-width: 320px;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
 }
 
-.math-details-content {
+.tooltip-content {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
-.math-details h3 {
-  margin: 0 0 8px 0;
-  font-size: 16px;
-  color: #333;
+.tooltip-latex {
+  font-family: "SF Mono", Consolas, Monaco, monospace;
+  background: var(--color-secondary);
+  padding: var(--space-8);
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-text);
 }
 
-.math-details code {
-  background: #f5f5f5;
-  padding: 2px 4px;
-  border-radius: 3px;
-  font-family: monospace;
-  word-break: break-all;
+.tooltip-variables {
+  color: var(--color-subtle);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
-/* Performance optimizations */
-[data-math-enhanced="true"] {
-  contain: content;
-  will-change: transform;
+.tooltip-section {
+  font-weight: 500;
+  color: var(--color-primary);
+  font-size: 13px;
 }
 
-/* Loading state */
-.math-loading {
-  opacity: 0.5;
-  transition: opacity 0.2s ease;
-}
-
-/* Batch rendering indicator */
-.math-batch-processing {
+/* Global Controls Panel */
+.math-global-controls {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 12px;
-  z-index: 1000;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s ease;
+  top: var(--space-24);
+  right: var(--space-24);
+  background: white;
+  border: 2px solid var(--color-secondary);
+  border-radius: 6px;
+  box-shadow: var(--shadow-lg);
+  width: 320px;
+  z-index: 1001;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
 }
 
-.math-batch-processing.visible {
-  opacity: 1;
+.controls-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-16);
+  border-bottom: 1px solid var(--color-secondary);
+  background: var(--color-primary);
+  border-radius: 4px 4px 0 0;
+}
+
+.controls-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+}
+
+.minimize-controls {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-4) var(--space-8);
+  font-size: 20px;
+  color: white;
+  transition: var(--transition-all);
+}
+
+.minimize-controls:hover {
+  opacity: 0.8;
+}
+
+.controls-content {
+  padding: var(--space-16);
+}
+
+.control-buttons {
+  display: flex;
+  gap: var(--space-8);
+  margin-top: var(--space-16);
+}
+
+.control-buttons button {
+  flex: 1;
+  padding: var(--space-8) var(--space-16);
+  border: 2px solid var(--color-primary);
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-primary);
+  transition: var(--transition-all);
+}
+
+.control-buttons button:hover {
+  background: var(--color-primary);
+  color: white;
+}
+
+/* Status Indicators */
+.status-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: var(--space-8);
+}
+
+.status-active {
+  background: var(--color-success);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-primary: #2d4a77;
+    --color-secondary: #1f2937;
+    --color-text: #f3f4f6;
+    --color-subtle: #9ca3af;
+  }
+
+  .math-variable-container,
+  .math-tooltip,
+  .math-global-controls {
+    background: var(--color-secondary);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .math-controls button,
+  .control-buttons button {
+    background: var(--color-secondary);
+    border-color: var(--color-primary);
+    color: var(--color-text);
+  }
+
+  .math-controls button:hover,
+  .control-buttons button:hover {
+    background: var(--color-primary);
+  }
+
+  .tooltip-latex {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .controls-header {
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .math-variable-item {
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .math-variable-item label {
+    color: var(--color-text);
+  }
+}
+
+.formula-interactive {
+  transition: var(--transition-all);
+  border: 2px solid transparent;
+  margin: -2px;
+  border-radius: 4px;
+}
+
+.formula-interactive:hover {
+  border-color: var(--color-secondary);
+  background: rgba(229, 233, 240, 0.1);
+}
+
+.math-variable-container,
+.math-tooltip {
+  z-index: 999999;
+  position: absolute;
+  background: white;
+  border: 2px solid var(--color-secondary);
+  border-radius: 6px;
+  box-shadow: var(--shadow-lg);
+}
+
+.math-variable-container {
+  min-width: 280px;
+  padding: var(--space-16);
+}
+
+.math-tooltip {
+  padding: var(--space-8) var(--space-16);
+  max-width: 400px;
+  pointer-events: none;
+}
+
+.formula-highlight {
+  background: rgba(184, 163, 85, 0.1) !important;
+  border-color: var(--color-accent) !important;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .formula-interactive:hover {
+    background: rgba(229, 233, 240, 0.05);
+  }
+
+  .math-variable-container,
+  .math-tooltip {
+    background: var(--color-secondary);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: var(--color-text);
+  }
+
+  .formula-highlight {
+    background: rgba(184, 163, 85, 0.15) !important;
+  }
 }
