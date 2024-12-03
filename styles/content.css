@@ -1,0 +1,44 @@
+/* Styles for LaTeX elements */
+.latex-processed {
+  margin: 2px 0;
+}
+
+.latex-highlight {
+  background-color: #ffeb3b;
+  cursor: pointer;
+}
+
+.latex-annotation {
+  border-bottom: 2px dotted #2196f3;
+  cursor: help;
+}
+
+.latex-reference {
+  border-bottom: 2px solid #4caf50;
+  cursor: pointer;
+}
+
+#latex-floating-menu {
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  padding: 5px;
+  position: fixed;
+  z-index: 10000;
+}
+
+.menu-button {
+  display: block;
+  width: 100%;
+  padding: 5px 10px;
+  margin: 2px 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.menu-button:hover {
+  background: #f0f0f0;
+}
