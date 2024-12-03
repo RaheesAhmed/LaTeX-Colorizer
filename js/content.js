@@ -6,6 +6,7 @@ const formulaStore = {
   variables: new Set(),
   sections: new Map(),
   selectedVariables: new Set(),
+  variableColors: new Map(), // Store colors for each variable
 };
 
 // Initialize when DOM is ready
@@ -43,6 +44,30 @@ function init() {
     }
     return true;
   });
+}
+
+// Find containing section for a formula
+function findSection(element) {
+  console.log("Finding section for element:", element);
+  const headings = ["H1", "H2", "H3", "H4", "H5", "H6"];
+  let current = element;
+
+  while (current && current.parentElement) {
+    const previousSibling = current.previousElementSibling;
+    if (previousSibling && headings.includes(previousSibling.tagName)) {
+      const section = {
+        id: previousSibling.id || `section-${Date.now()}`,
+        level: parseInt(previousSibling.tagName[1]),
+        title: previousSibling.textContent.trim(),
+        element: previousSibling,
+      };
+      console.log("Found section:", section);
+      return section;
+    }
+    current = current.parentElement;
+  }
+  console.log("No section found for element");
+  return null;
 }
 
 // Handle settings changes
@@ -144,14 +169,29 @@ function detectFormulas() {
 
 // Parse variables from LaTeX
 function parseVariables(latex) {
+  console.log("Parsing variables from:", latex);
   const variables = new Set();
+
+  // Remove display style and other formatting commands
+  latex = latex
+    .replace(/\\displaystyle/g, "")
+    .replace(/\\text\{[^}]+\}/g, "")
+    .replace(/\\left|\\right/g, "")
+    .replace(/\\begin\{[^}]+\}|\\end\{[^}]+\}/g, "")
+    .replace(/\{|\}/g, " ")
+    .trim();
 
   // Variable patterns
   const patterns = [
-    // Single letters with optional subscripts
-    /(?<!\\)[a-zA-Z](?:_[a-zA-Z0-9]+)?/g,
+    // Single letters (excluding numbers and common operators)
+    /(?<!\\)[a-zA-Z](?![\d\s=+\-*/\\])/g,
+
     // Greek letters
-    /\\(?:alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|omicron|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega)(?:_[a-zA-Z0-9]+)?/g,
+    /\\(?:alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|omicron|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega)(?![a-zA-Z])/gi,
+
+    // Subscripted variables
+    /([a-zA-Z])_([a-zA-Z0-9]+)/g,
+
     // Vector/matrix variables
     /\\(?:vec|mathbf)\{([a-zA-Z])\}/g,
   ];
@@ -161,12 +201,15 @@ function parseVariables(latex) {
     for (const match of matches) {
       const variable = cleanVariable(match[0]);
       if (variable && !isLatexCommand(variable)) {
+        console.log("Found variable:", variable);
         variables.add(variable);
       }
     }
   });
 
-  return Array.from(variables);
+  const result = Array.from(variables);
+  console.log("Parsed variables:", result);
+  return result;
 }
 
 // Clean variable name
@@ -198,6 +241,51 @@ function isLatexCommand(str) {
   return commands.includes(str.toLowerCase());
 }
 
+// Get or generate color for variable
+function getVariableColor(variable) {
+  // Check if we already have a color for this variable
+  if (formulaStore.variableColors.has(variable)) {
+    return formulaStore.variableColors.get(variable);
+  }
+
+  // Generate a new color
+  let hue;
+  switch (variable) {
+    case "x":
+      hue = 200; // Blue
+      break;
+    case "y":
+      hue = 120; // Green
+      break;
+    case "z":
+      hue = 280; // Purple
+      break;
+    case "alpha":
+    case "β":
+    case "beta":
+      hue = 30; // Orange
+      break;
+    case "theta":
+    case "φ":
+    case "phi":
+      hue = 340; // Red
+      break;
+    default:
+      // Generate a random hue that's not too close to existing ones
+      hue = Math.floor(Math.random() * 360);
+      const existingHues = Array.from(formulaStore.variableColors.values()).map(
+        (color) => parseInt(color.match(/hsl\((\d+)/)[1])
+      );
+      while (existingHues.some((h) => Math.abs(h - hue) < 30)) {
+        hue = (hue + 47) % 360; // Golden ratio to spread colors nicely
+      }
+  }
+
+  const color = `hsl(${hue}, 70%, 45%)`;
+  formulaStore.variableColors.set(variable, color);
+  return color;
+}
+
 // Handle formula click
 function handleFormulaClick(formula) {
   console.log("Handling formula click:", formula);
@@ -212,6 +300,7 @@ function handleFormulaClick(formula) {
   variableList.className = "math-variable-list";
 
   formula.variables.forEach((variable) => {
+    const color = getVariableColor(variable);
     const variableEl = document.createElement("div");
     variableEl.className = "math-variable-item";
     variableEl.innerHTML = `
@@ -219,13 +308,15 @@ function handleFormulaClick(formula) {
         <input type="checkbox" value="${variable}" 
           ${formulaStore.selectedVariables.has(variable) ? "checked" : ""}>
         <span class="variable-name">${variable}</span>
-        <span class="variable-color" style="background-color: ${getVariableColor(
-          variable
-        )}"></span>
+        <div class="variable-color-controls">
+          <span class="variable-color" style="background-color: ${color}"></span>
+          <input type="color" class="color-picker" value="${rgbToHex(color)}" 
+            data-variable="${variable}">
+        </div>
       </label>
     `;
 
-    const checkbox = variableEl.querySelector("input");
+    const checkbox = variableEl.querySelector("input[type='checkbox']");
     checkbox.addEventListener("change", (e) => {
       console.log(
         `Variable ${variable} ${e.target.checked ? "selected" : "deselected"}`
@@ -235,6 +326,16 @@ function handleFormulaClick(formula) {
       } else {
         formulaStore.selectedVariables.delete(variable);
       }
+      highlightVariables();
+    });
+
+    const colorPicker = variableEl.querySelector(".color-picker");
+    colorPicker.addEventListener("change", (e) => {
+      const newColor = e.target.value;
+      const hslColor = hexToHSL(newColor);
+      formulaStore.variableColors.set(variable, hslColor);
+      variableEl.querySelector(".variable-color").style.backgroundColor =
+        hslColor;
       highlightVariables();
     });
 
@@ -346,15 +447,63 @@ function positionElement(element, target) {
   }
 }
 
-// Get color for variable
-function getVariableColor(variable) {
-  let hash = 0;
-  for (let i = 0; i < variable.length; i++) {
-    hash = (hash << 5) - hash + variable.charCodeAt(i);
-    hash = hash & hash;
+// Convert RGB to Hex
+function rgbToHex(color) {
+  // Handle HSL color
+  if (color.startsWith("hsl")) {
+    const temp = document.createElement("div");
+    temp.style.color = color;
+    document.body.appendChild(temp);
+    const rgbColor = window.getComputedStyle(temp).color;
+    document.body.removeChild(temp);
+
+    const [r, g, b] = rgbColor.match(/\d+/g).map(Number);
+    return (
+      "#" +
+      [r, g, b]
+        .map((x) => {
+          const hex = x.toString(16);
+          return hex.length === 1 ? "0" + hex : hex;
+        })
+        .join("")
+    );
   }
-  const hue = Math.abs(hash % 360);
-  return `hsl(${hue}, 70%, 45%)`;
+  return color;
+}
+
+// Convert Hex to HSL
+function hexToHSL(hex) {
+  // Convert hex to RGB
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h,
+    s,
+    l = (max + min) / 2;
+
+  if (max === min) {
+    h = s = 0;
+  } else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      case b:
+        h = (r - g) / d + 4;
+        break;
+    }
+    h /= 6;
+  }
+
+  return `hsl(${Math.round(h * 360)}, 70%, 45%)`;
 }
 
 // Highlight selected variables
@@ -367,16 +516,21 @@ function highlightVariables() {
   // Clear all highlights
   document.querySelectorAll(".formula-highlight").forEach((el) => {
     el.classList.remove("formula-highlight");
+    el.style.removeProperty("--highlight-color");
   });
 
   // Add highlights for selected variables
   if (formulaStore.selectedVariables.size > 0) {
     formulaStore.formulas.forEach((formula) => {
-      const hasSelected = formula.variables.some((v) =>
+      const selectedVarsInFormula = formula.variables.filter((v) =>
         formulaStore.selectedVariables.has(v)
       );
-      if (hasSelected) {
+
+      if (selectedVarsInFormula.length > 0) {
         formula.element.classList.add("formula-highlight");
+        // Use the color of the first selected variable
+        const color = getVariableColor(selectedVarsInFormula[0]);
+        formula.element.style.setProperty("--highlight-color", color);
       }
     });
   }
