@@ -21,12 +21,14 @@
       }
 
       body {
-        width: 360px;
+        width: 800px;
+        height: 600px;
         margin: 0;
         padding: 0;
         font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
         background: var(--color-secondary);
         color: var(--color-text);
+        overflow-y: auto;
       }
 
       .header {
@@ -34,11 +36,14 @@
         padding: var(--space-16);
         text-align: center;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        position: sticky;
+        top: 0;
+        z-index: 100;
       }
 
       .header h1 {
         margin: 0;
-        font-size: 18px;
+        font-size: 24px;
         font-weight: 600;
         color: white;
         display: flex;
@@ -48,57 +53,106 @@
       }
 
       .header img {
-        width: 24px;
-        height: 24px;
+        width: 32px;
+        height: 32px;
       }
 
       .content {
-        padding: var(--space-16);
+        padding: var(--space-24);
+        display: grid;
+        gap: var(--space-24);
+      }
+
+      .features-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-24);
+      }
+
+      .feature-card {
         background: white;
-        border-radius: 6px;
-        margin: var(--space-16);
+        border-radius: 8px;
+        padding: var(--space-24);
         box-shadow: var(--shadow-md);
+        min-height: 200px;
       }
 
-      .section {
-        margin-bottom: var(--space-24);
-      }
-
-      .section:last-child {
-        margin-bottom: 0;
-      }
-
-      .section-title {
-        font-size: 14px;
+      .feature-title {
+        font-size: 18px;
         font-weight: 600;
         color: var(--color-primary);
-        margin-bottom: var(--space-8);
+        margin-bottom: var(--space-16);
         display: flex;
         align-items: center;
         gap: var(--space-8);
       }
 
-      .status {
-        display: flex;
-        align-items: center;
-        gap: var(--space-8);
-        padding: var(--space-8);
-        background: var(--color-secondary);
-        border-radius: 4px;
+      .variable-list,
+      .section-tree {
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid var(--color-secondary);
+        border-radius: 6px;
+        padding: var(--space-16);
         margin-bottom: var(--space-16);
       }
 
-      .status-indicator {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--color-success);
-        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+      .color-presets {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        gap: var(--space-8);
+        margin-bottom: var(--space-24);
       }
 
-      .status-text {
+      .preset-color {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        cursor: pointer;
+        border: 2px solid var(--color-secondary);
+        transition: transform 0.2s ease;
+      }
+
+      .preset-color:hover {
+        transform: scale(1.1);
+      }
+
+      .color-controls {
+        display: grid;
+        gap: var(--space-16);
+      }
+
+      .control-group {
+        display: flex;
+        align-items: center;
+        gap: var(--space-16);
+      }
+
+      .control-label {
         font-size: 14px;
         color: var(--color-text);
+        width: 100px;
+        font-weight: 500;
+      }
+
+      .range-input {
+        flex: 1;
+        height: 6px;
+        -webkit-appearance: none;
+        background: var(--color-secondary);
+        border-radius: 3px;
+        outline: none;
+      }
+
+      .range-input::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--color-primary);
+        cursor: pointer;
+        border: 2px solid white;
+        box-shadow: var(--shadow-sm);
       }
 
       .controls {
@@ -107,51 +161,33 @@
       }
 
       .control-item {
-        display: flex;
-        align-items: center;
-        gap: var(--space-8);
-        padding: var(--space-8);
+        padding: var(--space-8) var(--space-16);
         background: var(--color-secondary);
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.2s ease-in-out;
+        border-radius: 6px;
+        transition: background 0.2s ease;
       }
 
       .control-item:hover {
         background: rgba(26, 43, 76, 0.05);
       }
 
-      .control-item input[type="checkbox"] {
-        width: 16px;
-        height: 16px;
-        border: 2px solid var(--color-primary);
-        border-radius: 4px;
-        cursor: pointer;
-      }
-
-      .control-label {
-        font-size: 14px;
-        color: var(--color-text);
-        flex: 1;
-      }
-
       .button-group {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: var(--space-8);
-        margin-top: var(--space-16);
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--space-16);
+        margin-top: var(--space-24);
       }
 
       button {
-        padding: var(--space-8) var(--space-16);
+        padding: var(--space-12) var(--space-24);
         border: 2px solid var(--color-primary);
-        border-radius: 4px;
+        border-radius: 6px;
         background: white;
         color: var(--color-primary);
         font-size: 14px;
-        font-weight: 500;
+        font-weight: 600;
         cursor: pointer;
-        transition: all 0.2s ease-in-out;
+        transition: all 0.2s ease;
       }
 
       button:hover {
@@ -169,19 +205,42 @@
         border-color: var(--color-accent);
       }
 
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --color-primary: #2d4a77;
-          --color-secondary: #1f2937;
-          --color-text: #f3f4f6;
-          --color-subtle: #9ca3af;
-        }
+      .performance-stats {
+        background: white;
+        border-radius: 8px;
+        padding: var(--space-16);
+        margin-top: var(--space-24);
+        box-shadow: var(--shadow-md);
+      }
 
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: var(--space-16);
+      }
+
+      .stat-item {
+        text-align: center;
+      }
+
+      .stat-value {
+        font-size: 24px;
+        font-weight: 600;
+        color: var(--color-primary);
+      }
+
+      .stat-label {
+        font-size: 12px;
+        color: var(--color-subtle);
+        margin-top: var(--space-4);
+      }
+
+      @media (prefers-color-scheme: dark) {
         body {
           background: var(--color-secondary);
         }
 
-        .content {
+        .feature-card {
           background: var(--color-secondary);
           border: 1px solid rgba(255, 255, 255, 0.1);
         }
@@ -198,108 +257,11 @@
           background: var(--color-secondary);
           color: var(--color-text);
         }
-      }
 
-      .features-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: var(--space-16);
-        margin-bottom: var(--space-24);
-      }
-
-      .feature-card {
-        background: var(--color-secondary);
-        border-radius: 6px;
-        padding: var(--space-16);
-      }
-
-      .feature-title {
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--color-primary);
-        margin-bottom: var(--space-8);
-      }
-
-      .color-presets {
-        display: grid;
-        grid-template-columns: repeat(5, 1fr);
-        gap: var(--space-4);
-        margin-bottom: var(--space-16);
-      }
-
-      .preset-color {
-        width: 24px;
-        height: 24px;
-        border-radius: 4px;
-        cursor: pointer;
-        border: 2px solid var(--color-secondary);
-      }
-
-      .preset-color:hover {
-        transform: scale(1.1);
-      }
-
-      .color-controls {
-        display: grid;
-        gap: var(--space-8);
-      }
-
-      .control-group {
-        display: flex;
-        align-items: center;
-        gap: var(--space-8);
-      }
-
-      .control-label {
-        font-size: 12px;
-        color: var(--color-subtle);
-        width: 80px;
-      }
-
-      .range-input {
-        flex: 1;
-      }
-
-      .section-tree {
-        max-height: 200px;
-        overflow-y: auto;
-        border: 1px solid var(--color-secondary);
-        border-radius: 4px;
-        padding: var(--space-8);
-        margin-bottom: var(--space-16);
-      }
-
-      .tree-item {
-        padding: var(--space-4) 0;
-        padding-left: var(--space-16);
-      }
-
-      .tree-item label {
-        display: flex;
-        align-items: center;
-        gap: var(--space-8);
-      }
-
-      .variable-list {
-        max-height: 200px;
-        overflow-y: auto;
-        border: 1px solid var(--color-secondary);
-        border-radius: 4px;
-        padding: var(--space-8);
-      }
-
-      .variable-item {
-        display: flex;
-        align-items: center;
-        gap: var(--space-8);
-        padding: var(--space-4) 0;
-      }
-
-      .variable-color {
-        width: 16px;
-        height: 16px;
-        border-radius: 4px;
-        border: 2px solid var(--color-secondary);
+        .performance-stats {
+          background: var(--color-secondary);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
       }
     </style>
   </head>
@@ -312,13 +274,6 @@
     </div>
 
     <div class="content">
-      <div class="section">
-        <div class="status">
-          <div class="status-indicator"></div>
-          <span class="status-text">Extension is active</span>
-        </div>
-      </div>
-
       <div class="features-grid">
         <div class="feature-card">
           <div class="feature-title">Variable Controls</div>
@@ -335,13 +290,16 @@
         </div>
 
         <div class="feature-card">
-          <div class="feature-title">Color Presets</div>
+          <div class="feature-title">Color Management</div>
           <div class="color-presets">
             <div class="preset-color" style="background: #4a90e2"></div>
             <div class="preset-color" style="background: #50e3c2"></div>
             <div class="preset-color" style="background: #f5a623"></div>
             <div class="preset-color" style="background: #d0021b"></div>
             <div class="preset-color" style="background: #9013fe"></div>
+            <div class="preset-color" style="background: #7ed321"></div>
+            <div class="preset-color" style="background: #bd10e0"></div>
+            <div class="preset-color" style="background: #e67e22"></div>
           </div>
           <div class="color-controls">
             <div class="control-group">
@@ -388,7 +346,7 @@
         </div>
 
         <div class="feature-card">
-          <div class="feature-title">Global Controls</div>
+          <div class="feature-title">Global Settings</div>
           <div class="controls">
             <label class="control-item">
               <input type="checkbox" id="autoHighlight" checked />
@@ -402,12 +360,39 @@
               <input type="checkbox" id="darkMode" />
               <span class="control-label">Dark mode</span>
             </label>
+            <label class="control-item">
+              <input type="checkbox" id="performanceMode" />
+              <span class="control-label">High performance mode</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="performance-stats">
+        <div class="feature-title">Performance Metrics</div>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-value" id="fpsValue">60.0</div>
+            <div class="stat-label">FPS</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="renderTimeValue">0.5ms</div>
+            <div class="stat-label">Render Time</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="memoryValue">24MB</div>
+            <div class="stat-label">Memory Usage</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="cacheValue">150</div>
+            <div class="stat-label">Cached Items</div>
           </div>
         </div>
       </div>
 
       <div class="button-group">
         <button id="clearHighlights">Clear All</button>
+        <button id="resetSettings">Reset Settings</button>
         <button id="saveSettings" class="primary">Save Settings</button>
       </div>
     </div>
