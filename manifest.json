@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "LaTeX Formula Colorizer",
+  "name": "LaTeX Colorizer",
   "version": "1.0",
   "description": "Enhance Wikipedia's mathematical formulas with interactive color highlighting",
   "permissions": ["storage", "activeTab", "scripting", "contextMenus"],

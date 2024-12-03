@@ -3,397 +3,132 @@
   <head>
     <meta charset="UTF-8" />
     <title>LaTeX Formula Colorizer</title>
-    <style>
-      :root {
-        --color-primary: #1a2b4c;
-        --color-secondary: #e5e9f0;
-        --color-accent: #b8a355;
-        --color-success: #10b981;
-        --color-text: #0f172a;
-        --color-subtle: #64748b;
-        --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
-        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.05);
-        --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.08);
-        --space-4: 4px;
-        --space-8: 8px;
-        --space-16: 16px;
-        --space-24: 24px;
-      }
-
-      body {
-        width: 800px;
-        height: 600px;
-        margin: 0;
-        padding: 0;
-        font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-        background: var(--color-secondary);
-        color: var(--color-text);
-        overflow-y: auto;
-      }
-
-      .header {
-        background: var(--color-primary);
-        padding: var(--space-16);
-        text-align: center;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        position: sticky;
-        top: 0;
-        z-index: 100;
-      }
-
-      .header h1 {
-        margin: 0;
-        font-size: 24px;
-        font-weight: 600;
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: var(--space-8);
-      }
-
-      .header img {
-        width: 32px;
-        height: 32px;
-      }
-
-      .content {
-        padding: var(--space-24);
-        display: grid;
-        gap: var(--space-24);
-      }
-
-      .features-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: var(--space-24);
-      }
-
-      .feature-card {
-        background: white;
-        border-radius: 8px;
-        padding: var(--space-24);
-        box-shadow: var(--shadow-md);
-        min-height: 200px;
-      }
-
-      .feature-title {
-        font-size: 18px;
-        font-weight: 600;
-        color: var(--color-primary);
-        margin-bottom: var(--space-16);
-        display: flex;
-        align-items: center;
-        gap: var(--space-8);
-      }
-
-      .variable-list,
-      .section-tree {
-        max-height: 300px;
-        overflow-y: auto;
-        border: 1px solid var(--color-secondary);
-        border-radius: 6px;
-        padding: var(--space-16);
-        margin-bottom: var(--space-16);
-      }
-
-      .color-presets {
-        display: grid;
-        grid-template-columns: repeat(8, 1fr);
-        gap: var(--space-8);
-        margin-bottom: var(--space-24);
-      }
-
-      .preset-color {
-        width: 32px;
-        height: 32px;
-        border-radius: 6px;
-        cursor: pointer;
-        border: 2px solid var(--color-secondary);
-        transition: transform 0.2s ease;
-      }
-
-      .preset-color:hover {
-        transform: scale(1.1);
-      }
-
-      .color-controls {
-        display: grid;
-        gap: var(--space-16);
-      }
-
-      .control-group {
-        display: flex;
-        align-items: center;
-        gap: var(--space-16);
-      }
-
-      .control-label {
-        font-size: 14px;
-        color: var(--color-text);
-        width: 100px;
-        font-weight: 500;
-      }
-
-      .range-input {
-        flex: 1;
-        height: 6px;
-        -webkit-appearance: none;
-        background: var(--color-secondary);
-        border-radius: 3px;
-        outline: none;
-      }
-
-      .range-input::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        background: var(--color-primary);
-        cursor: pointer;
-        border: 2px solid white;
-        box-shadow: var(--shadow-sm);
-      }
-
-      .controls {
-        display: grid;
-        gap: var(--space-8);
-      }
-
-      .control-item {
-        padding: var(--space-8) var(--space-16);
-        background: var(--color-secondary);
-        border-radius: 6px;
-        transition: background 0.2s ease;
-      }
-
-      .control-item:hover {
-        background: rgba(26, 43, 76, 0.05);
-      }
-
-      .button-group {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: var(--space-16);
-        margin-top: var(--space-24);
-      }
-
-      button {
-        padding: var(--space-12) var(--space-24);
-        border: 2px solid var(--color-primary);
-        border-radius: 6px;
-        background: white;
-        color: var(--color-primary);
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s ease;
-      }
-
-      button:hover {
-        background: var(--color-primary);
-        color: white;
-      }
-
-      button.primary {
-        background: var(--color-primary);
-        color: white;
-      }
-
-      button.primary:hover {
-        background: var(--color-accent);
-        border-color: var(--color-accent);
-      }
-
-      .performance-stats {
-        background: white;
-        border-radius: 8px;
-        padding: var(--space-16);
-        margin-top: var(--space-24);
-        box-shadow: var(--shadow-md);
-      }
-
-      .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: var(--space-16);
-      }
-
-      .stat-item {
-        text-align: center;
-      }
-
-      .stat-value {
-        font-size: 24px;
-        font-weight: 600;
-        color: var(--color-primary);
-      }
-
-      .stat-label {
-        font-size: 12px;
-        color: var(--color-subtle);
-        margin-top: var(--space-4);
-      }
-
-      @media (prefers-color-scheme: dark) {
-        body {
-          background: var(--color-secondary);
-        }
-
-        .feature-card {
-          background: var(--color-secondary);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .control-item {
-          background: rgba(255, 255, 255, 0.05);
-        }
-
-        .control-item:hover {
-          background: rgba(255, 255, 255, 0.1);
-        }
-
-        button {
-          background: var(--color-secondary);
-          color: var(--color-text);
-        }
-
-        .performance-stats {
-          background: var(--color-secondary);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-      }
-    </style>
+    <link rel="stylesheet" href="../styles/popup.css" />
   </head>
   <body>
     <div class="header">
-      <h1>
-        <img src="../icons/icon48.png" alt="Logo" />
-        LaTeX Formula Colorizer
-      </h1>
+      <img src="../icons/icon-48.png" alt="Logo" />
+      <h1>LaTeX Formula Colorizer</h1>
     </div>
 
-    <div class="content">
-      <div class="features-grid">
-        <div class="feature-card">
-          <div class="feature-title">Variable Controls</div>
-          <div class="variable-list" id="variableList">
-            <!-- Variables will be populated here -->
+    <div class="main-content">
+      <!-- Mode Selection -->
+      <div class="mode-selector">
+        <button class="mode-btn active" data-mode="variable">
+          Variable Mode
+        </button>
+        <button class="mode-btn" data-mode="equation">Equation Mode</button>
+      </div>
+
+      <!-- Variable Coloring Section -->
+      <div class="section" id="variable-section">
+        <h2>Common Variables</h2>
+        <div class="variable-grid">
+          <div class="variable-item">
+            <span class="variable-preview">x</span>
+            <input type="color" id="xColor" value="#FF4444" />
+            <label>Variables x, x₁, x₂...</label>
+          </div>
+          <div class="variable-item">
+            <span class="variable-preview">y</span>
+            <input type="color" id="yColor" value="#44FF44" />
+            <label>Variables y, y₁, y₂...</label>
+          </div>
+          <div class="variable-item">
+            <span class="variable-preview">β</span>
+            <input type="color" id="betaColor" value="#4444FF" />
+            <label>Parameters β, β₁, β₂...</label>
+          </div>
+          <div class="variable-item">
+            <span class="variable-preview">ε</span>
+            <input type="color" id="epsilonColor" value="#FF44FF" />
+            <label>Error terms ε, ε₁, ε₂...</label>
           </div>
         </div>
 
-        <div class="feature-card">
-          <div class="feature-title">Section Controls</div>
-          <div class="section-tree" id="sectionTree">
-            <!-- Section tree will be populated here -->
+        <div class="detected-variables">
+          <h3>Detected Variables</h3>
+          <div id="detectedVarList" class="variable-list">
+            <!-- Dynamically populated -->
           </div>
         </div>
 
-        <div class="feature-card">
-          <div class="feature-title">Color Management</div>
-          <div class="color-presets">
-            <div class="preset-color" style="background: #4a90e2"></div>
-            <div class="preset-color" style="background: #50e3c2"></div>
-            <div class="preset-color" style="background: #f5a623"></div>
-            <div class="preset-color" style="background: #d0021b"></div>
-            <div class="preset-color" style="background: #9013fe"></div>
-            <div class="preset-color" style="background: #7ed321"></div>
-            <div class="preset-color" style="background: #bd10e0"></div>
-            <div class="preset-color" style="background: #e67e22"></div>
-          </div>
-          <div class="color-controls">
-            <div class="control-group">
-              <span class="control-label">Hue</span>
-              <input
-                type="range"
-                class="range-input"
-                min="0"
-                max="360"
-                value="180"
-              />
-            </div>
-            <div class="control-group">
-              <span class="control-label">Saturation</span>
-              <input
-                type="range"
-                class="range-input"
-                min="0"
-                max="100"
-                value="70"
-              />
-            </div>
-            <div class="control-group">
-              <span class="control-label">Lightness</span>
-              <input
-                type="range"
-                class="range-input"
-                min="0"
-                max="100"
-                value="45"
-              />
-            </div>
-            <div class="control-group">
-              <span class="control-label">Opacity</span>
-              <input
-                type="range"
-                class="range-input"
-                min="0"
-                max="100"
-                value="100"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-title">Global Settings</div>
-          <div class="controls">
-            <label class="control-item">
-              <input type="checkbox" id="autoHighlight" checked />
-              <span class="control-label">Auto-highlight formulas</span>
-            </label>
-            <label class="control-item">
-              <input type="checkbox" id="showTooltips" checked />
-              <span class="control-label">Show tooltips</span>
-            </label>
-            <label class="control-item">
-              <input type="checkbox" id="darkMode" />
-              <span class="control-label">Dark mode</span>
-            </label>
-            <label class="control-item">
-              <input type="checkbox" id="performanceMode" />
-              <span class="control-label">High performance mode</span>
-            </label>
+        <div class="custom-variable">
+          <h3>Add Custom Variable</h3>
+          <div class="custom-var-input">
+            <input
+              type="text"
+              id="newVarName"
+              placeholder="Variable name (e.g., α, θ)"
+            />
+            <input type="color" id="newVarColor" value="#000000" />
+            <button id="addVarBtn">Add</button>
           </div>
         </div>
       </div>
 
-      <div class="performance-stats">
-        <div class="feature-title">Performance Metrics</div>
-        <div class="stats-grid">
-          <div class="stat-item">
-            <div class="stat-value" id="fpsValue">60.0</div>
-            <div class="stat-label">FPS</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value" id="renderTimeValue">0.5ms</div>
-            <div class="stat-label">Render Time</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value" id="memoryValue">24MB</div>
-            <div class="stat-label">Memory Usage</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value" id="cacheValue">150</div>
-            <div class="stat-label">Cached Items</div>
+      <!-- Equation Coloring Section -->
+      <div class="section" id="equation-section">
+        <h2>Equation Styling</h2>
+        <div class="equation-list" id="equationList">
+          <!-- Dynamically populated -->
+        </div>
+        <div class="equation-style">
+          <h3>Style Options</h3>
+          <div class="style-controls">
+            <div class="control-group">
+              <label>Background Color</label>
+              <input type="color" id="eqBgColor" value="#F0F0F0" />
+            </div>
+            <div class="control-group">
+              <label>Border Style</label>
+              <select id="eqBorderStyle">
+                <option value="none">None</option>
+                <option value="solid">Solid</option>
+                <option value="dashed">Dashed</option>
+                <option value="dotted">Dotted</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label>Border Color</label>
+              <input type="color" id="eqBorderColor" value="#CCCCCC" />
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="button-group">
-        <button id="clearHighlights">Clear All</button>
-        <button id="resetSettings">Reset Settings</button>
-        <button id="saveSettings" class="primary">Save Settings</button>
+      <!-- Color Management -->
+      <div class="section">
+        <h2>Color Management</h2>
+        <div class="color-presets">
+          <h3>Preset Palettes</h3>
+          <div class="preset-grid">
+            <button class="preset-btn" data-palette="default">Default</button>
+            <button class="preset-btn" data-palette="contrast">
+              High Contrast
+            </button>
+            <button class="preset-btn" data-palette="colorblind">
+              Colorblind Safe
+            </button>
+            <button class="preset-btn" data-palette="pastel">Pastel</button>
+          </div>
+        </div>
+        <div class="saved-palettes">
+          <h3>Saved Palettes</h3>
+          <select id="savedPaletteSelect">
+            <option value="">Select a saved palette...</option>
+          </select>
+          <button id="savePaletteBtn">Save Current</button>
+          <button id="deletePaletteBtn">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="status" id="status"></div>
+      <div class="actions">
+        <button id="resetBtn">Reset</button>
+        <button id="applyBtn" class="primary">Apply Changes</button>
       </div>
     </div>
 

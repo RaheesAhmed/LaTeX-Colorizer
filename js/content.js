@@ -221,6 +221,309 @@ const performanceCache = {
   BATCH_SIZE: 5,
 };
 
+// Initialize variable panel
+const variablePanel = {
+  init() {
+    this.panel = document.createElement("div");
+    this.panel.className = "variable-panel";
+    this.panel.innerHTML = `
+      <div class="panel-header">
+        <h3>Variables</h3>
+        <button class="close-btn">×</button>
+      </div>
+      <div class="variables-list"></div>
+      <div class="panel-footer">
+        <button class="clear-btn">Clear All</button>
+        <button class="apply-btn">Apply Color</button>
+      </div>
+    `;
+    document.body.appendChild(this.panel);
+    this.setupListeners();
+  },
+
+  setupListeners() {
+    this.panel.querySelector(".close-btn").addEventListener("click", () => {
+      this.hide();
+    });
+
+    this.panel.querySelector(".clear-btn").addEventListener("click", () => {
+      this.panel.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+        cb.checked = false;
+      });
+    });
+
+    this.panel.querySelector(".apply-btn").addEventListener("click", () => {
+      const selectedVars = Array.from(
+        this.panel.querySelectorAll('input[type="checkbox"]:checked')
+      ).map((cb) => cb.value);
+      this.applyColors(selectedVars);
+    });
+  },
+
+  show(formula, position) {
+    const variables = this.extractVariables(formula.latex);
+    this.currentFormula = formula;
+
+    // Update variables list
+    const listContainer = this.panel.querySelector(".variables-list");
+    listContainer.innerHTML = variables
+      .map(
+        (v) => `
+      <div class="variable-item">
+        <label>
+          <input type="checkbox" value="${v}">
+          <span class="variable-name">${v}</span>
+        </label>
+        <span class="color-indicator" style="background-color: ${this.getVariableColor(
+          v
+        )}"></span>
+      </div>
+    `
+      )
+      .join("");
+
+    // Position panel
+    this.panel.style.top = `${position.bottom + window.scrollY + 5}px`;
+    this.panel.style.left = `${position.left + window.scrollX}px`;
+    this.panel.classList.add("visible");
+  },
+
+  hide() {
+    this.panel.classList.remove("visible");
+  },
+
+  extractVariables(latex) {
+    const variables = new Set();
+
+    // Common patterns for variables in LaTeX
+    const patterns = [
+      // Greek letters
+      /\\(?:alpha|beta|gamma|delta|epsilon|varepsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega)/g,
+      // Single letters
+      /(?<![\\{])[a-zA-Z]/g,
+      // Subscripted variables
+      /([a-zA-Z])_\{([^}]+)\}/g,
+      // Vector/matrix variables
+      /\\mathbf\{([^}]+)\}/g,
+    ];
+
+    patterns.forEach((pattern) => {
+      const matches = latex.matchAll(pattern);
+      for (const match of matches) {
+        let variable = match[1] || match[0];
+        if (variable.startsWith("\\")) {
+          // Convert LaTeX commands to Unicode
+          const mapping = {
+            "\\alpha": "α",
+            "\\beta": "β",
+            "\\gamma": "γ",
+            "\\delta": "δ",
+            "\\epsilon": "ε",
+            "\\varepsilon": "ε",
+            "\\zeta": "ζ",
+            "\\eta": "η",
+            "\\theta": "θ",
+            "\\iota": "ι",
+            "\\kappa": "κ",
+            "\\lambda": "λ",
+            "\\mu": "μ",
+            "\\nu": "ν",
+            "\\xi": "ξ",
+            "\\pi": "π",
+            "\\rho": "ρ",
+            "\\sigma": "σ",
+            "\\tau": "τ",
+            "\\upsilon": "υ",
+            "\\phi": "φ",
+            "\\chi": "χ",
+            "\\psi": "ψ",
+            "\\omega": "ω",
+          };
+          variable = mapping[variable] || variable;
+        }
+        variables.add(variable);
+      }
+    });
+
+    return Array.from(variables);
+  },
+
+  getVariableColor(variable) {
+    // Default colors for common variables
+    const colors = {
+      x: "#FF4444",
+      y: "#44FF44",
+      β: "#4444FF",
+      ε: "#FF44FF",
+      α: "#FFB366",
+      θ: "#66B3FF",
+      μ: "#FF66B3",
+      σ: "#B366FF",
+    };
+    return colors[variable] || "#000000";
+  },
+
+  applyColors(selectedVariables) {
+    if (!this.currentFormula) return;
+
+    const formula = this.currentFormula;
+    const text = formula.element.textContent;
+    const fragment = document.createDocumentFragment();
+    let lastIndex = 0;
+
+    selectedVariables.forEach((variable) => {
+      const color = this.getVariableColor(variable);
+      const regex = new RegExp(
+        variable.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"),
+        "g"
+      );
+      let match;
+
+      while ((match = regex.exec(text)) !== null) {
+        // Add text before match
+        if (match.index > lastIndex) {
+          fragment.appendChild(
+            document.createTextNode(text.slice(lastIndex, match.index))
+          );
+        }
+
+        // Add colored variable
+        const span = document.createElement("span");
+        span.style.color = color;
+        span.style.fontWeight = "bold";
+        span.textContent = match[0];
+        fragment.appendChild(span);
+
+        lastIndex = match.index + match[0].length;
+      }
+    });
+
+    // Add remaining text
+    if (lastIndex < text.length) {
+      fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+    }
+
+    // Replace formula content
+    formula.element.textContent = "";
+    formula.element.appendChild(fragment);
+  },
+};
+
+// Initialize variable panel
+document.addEventListener("DOMContentLoaded", () => {
+  variablePanel.init();
+});
+
+// Handle formula clicks
+function handleFormulaClick(formula) {
+  console.log("Formula clicked:", formula);
+  const rect = formula.element.getBoundingClientRect();
+  variablePanel.show(formula, rect);
+}
+
+// Add CSS for the variable panel
+const style = document.createElement("style");
+style.textContent = `
+  .variable-panel {
+    position: absolute;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 16px;
+    min-width: 200px;
+    z-index: 10000;
+    display: none;
+  }
+
+  .variable-panel.visible {
+    display: block;
+  }
+
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .panel-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #333;
+  }
+
+  .close-btn {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #666;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .variables-list {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 12px;
+  }
+
+  .variable-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+  }
+
+  .variable-item label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+
+  .variable-name {
+    font-family: "Times New Roman", serif;
+    font-style: italic;
+  }
+
+  .color-indicator {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+  }
+
+  .panel-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .panel-footer button {
+    padding: 6px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+  }
+
+  .apply-btn {
+    background: #2196f3 !important;
+    color: white;
+    border-color: #2196f3 !important;
+  }
+
+  .apply-btn:hover {
+    background: #1976d2 !important;
+  }
+`;
+
 // Initialize when DOM is ready
 function init() {
   if (isInitialized) return;
@@ -433,26 +736,6 @@ function setupFormulaHandlers(formula) {
   formula.element.classList.add("formula-interactive");
 }
 
-// Handle formula click
-function handleFormulaClick(formula) {
-  console.log("Formula clicked:", formula);
-
-  // Get or create the variable manager instance
-  if (!window.variableManager) {
-    window.variableManager = new VariableManager();
-    window.variableManager.init();
-  }
-
-  // Show the variable panel at the clicked formula's position
-  const rect = formula.element.getBoundingClientRect();
-  window.variableManager.showVariablePanel(rect);
-
-  // Parse and display variables from the formula
-  if (formula.variables && formula.variables.length > 0) {
-    window.variableManager.updateVariableList(formula.variables);
-  }
-}
-
 // Handle settings changes
 function handleSettingsChange(settings) {
   console.log("Settings changed:", settings);
@@ -478,4 +761,89 @@ window.addEventListener("unload", () => {
   performanceCache.colorCache.clear();
   formulaStore.formulas.clear();
   formulaStore.variables.clear();
+});
+
+// Listen for messages from popup
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "applyColors") {
+    const colors = message.colors;
+
+    // Variable mapping between LaTeX commands and Unicode
+    const variableMapping = {
+      β: ["\\beta", "β"],
+      ε: ["\\varepsilon", "ε"],
+      α: ["\\alpha", "α"],
+      γ: ["\\gamma", "γ"],
+      θ: ["\\theta", "θ"],
+      μ: ["\\mu", "μ"],
+      π: ["\\pi", "π"],
+      σ: ["\\sigma", "σ"],
+    };
+
+    // Find all formulas
+    document.querySelectorAll(".formula-interactive").forEach((formula) => {
+      const text = formula.textContent;
+      const latex =
+        formula.dataset.latex || formula.getAttribute("data-latex") || "";
+
+      // Create a document fragment to hold the colored text
+      const fragment = document.createDocumentFragment();
+      let lastIndex = 0;
+
+      // Sort variables by length (longest first) to handle overlapping matches
+      const variables = Object.keys(colors).sort((a, b) => b.length - a.length);
+
+      // Find and color all variables
+      variables.forEach((variable) => {
+        // Get all possible representations of the variable
+        let patterns = [variable];
+        if (variableMapping[variable]) {
+          patterns = patterns.concat(variableMapping[variable]);
+        }
+
+        // Create regex pattern for all representations
+        const regexPattern = patterns
+          .map((p) => p.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"))
+          .join("|");
+        const regex = new RegExp(regexPattern, "g");
+
+        // Try to match in both text content and LaTeX
+        [text, latex].forEach((content) => {
+          if (!content) return;
+
+          let match;
+          while ((match = regex.exec(content)) !== null) {
+            // Add text before the match
+            if (match.index > lastIndex) {
+              fragment.appendChild(
+                document.createTextNode(content.slice(lastIndex, match.index))
+              );
+            }
+
+            // Create colored span for the variable
+            const span = document.createElement("span");
+            span.style.color = colors[variable];
+            span.style.fontWeight = "bold";
+            span.className = "colored-variable";
+            span.textContent = match[0];
+            fragment.appendChild(span);
+
+            lastIndex = match.index + match[0].length;
+          }
+        });
+      });
+
+      // Add any remaining text
+      if (lastIndex < text.length) {
+        fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+      }
+
+      // Replace formula content
+      formula.textContent = ""; // Clear existing content
+      formula.appendChild(fragment);
+    });
+
+    sendResponse({ success: true });
+  }
+  return true;
 });

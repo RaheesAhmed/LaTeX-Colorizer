@@ -152,24 +152,51 @@ class VariableManager {
     this.updateVariableList();
   }
 
-  updateVariableList() {
-    const listContainer = this.panel.querySelector(".variable-list");
-    listContainer.innerHTML = Array.from(this.variables.entries())
-      .map(
-        ([variable, data]) => `
-        <div class="variable-item ${
-          this.selectedVariables.has(variable) ? "selected" : ""
-        }"
-             data-variable="${variable}">
+  updateVariableList(variables = []) {
+    // Clear existing variables if new ones are provided
+    if (variables.length > 0) {
+      this.variables.clear();
+      // Initialize new variables
+      variables.forEach((variable) => {
+        this.variables.set(variable, {
+          color: this.colorMap.get(variable) || null,
+          occurrences: [],
+        });
+      });
+    }
+
+    const variableList = this.panel.querySelector(".variable-list");
+    variableList.innerHTML = "";
+
+    // Add variables to the list
+    this.variables.forEach((data, variable) => {
+      const variableItem = document.createElement("div");
+      variableItem.className = "variable-item";
+      variableItem.innerHTML = `
+        <label class="variable-label">
+          <input type="checkbox" 
+                 class="variable-checkbox" 
+                 value="${variable}" 
+                 ${this.selectedVariables.has(variable) ? "checked" : ""}>
           <span class="variable-name">${variable}</span>
-          <span class="variable-color" style="background-color: ${
-            data.color || "transparent"
-          }"></span>
-          <span class="occurrence-count">${data.occurrences.length}</span>
+        </label>
+        <div class="variable-color" 
+             style="background-color: ${data.color || this.activeColor}">
         </div>
-      `
-      )
-      .join("");
+      `;
+
+      // Add event listeners
+      const checkbox = variableItem.querySelector(".variable-checkbox");
+      checkbox.addEventListener("change", (e) => {
+        if (e.target.checked) {
+          this.selectedVariables.add(variable);
+        } else {
+          this.selectedVariables.delete(variable);
+        }
+      });
+
+      variableList.appendChild(variableItem);
+    });
   }
 
   showVariablePanel(rangeOrRect) {
@@ -207,18 +234,78 @@ class VariableManager {
 
   applyColorToSelected() {
     this.selectedVariables.forEach((variable) => {
+      // Create or update variable data
+      if (!this.variables.has(variable)) {
+        this.variables.set(variable, {
+          color: null,
+          occurrences: [],
+        });
+      }
+
       const varData = this.variables.get(variable);
       varData.color = this.activeColor;
+      this.colorMap.set(variable, this.activeColor);
 
-      varData.occurrences.forEach((range) => {
-        const span = document.createElement("span");
-        span.style.color = this.activeColor;
-        span.style.fontWeight = "bold";
-        span.textContent = variable;
+      // Find the formula element
+      const formula = document.querySelector(".formula-interactive");
+      if (!formula) return;
 
-        range.deleteContents();
-        range.insertNode(span);
-      });
+      // Function to recursively find and color text nodes
+      const colorTextNodes = (node) => {
+        if (node.nodeType === Node.TEXT_NODE) {
+          const text = node.textContent;
+          const regex = new RegExp(
+            variable.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"),
+            "g"
+          );
+          let match;
+          let lastIndex = 0;
+          let fragments = [];
+
+          while ((match = regex.exec(text)) !== null) {
+            // Add text before the match
+            if (match.index > lastIndex) {
+              fragments.push(
+                document.createTextNode(text.slice(lastIndex, match.index))
+              );
+            }
+
+            // Create colored span for the variable
+            const span = document.createElement("span");
+            span.style.color = this.activeColor;
+            span.style.fontWeight = "bold";
+            span.className = "colored-variable";
+            span.textContent = match[0];
+            fragments.push(span);
+
+            lastIndex = match.index + match[0].length;
+          }
+
+          // Add remaining text
+          if (lastIndex < text.length) {
+            fragments.push(document.createTextNode(text.slice(lastIndex)));
+          }
+
+          // Replace the text node if we found any matches
+          if (fragments.length > 0) {
+            const parent = node.parentNode;
+            fragments.forEach((fragment) =>
+              parent.insertBefore(fragment, node)
+            );
+            parent.removeChild(node);
+          }
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+          // Skip already colored variables
+          if (!node.classList.contains("colored-variable")) {
+            Array.from(node.childNodes).forEach((child) =>
+              colorTextNodes(child)
+            );
+          }
+        }
+      };
+
+      // Start coloring from the formula element
+      colorTextNodes(formula);
     });
 
     this.updateVariableList();
@@ -227,45 +314,6 @@ class VariableManager {
   clearSelections() {
     this.selectedVariables.clear();
     this.updateVariableList();
-  }
-
-  updateVariableList(variables = []) {
-    const variableList = this.panel.querySelector(".variable-list");
-
-    // Clear existing list
-    variableList.innerHTML = "";
-
-    // Add variables to the list
-    variables.forEach((variable) => {
-      const variableItem = document.createElement("div");
-      variableItem.className = "variable-item";
-      variableItem.innerHTML = `
-        <label class="variable-label">
-          <input type="checkbox" 
-                 class="variable-checkbox" 
-                 value="${variable}" 
-                 ${this.selectedVariables.has(variable) ? "checked" : ""}>
-          <span class="variable-name">${variable}</span>
-        </label>
-        <div class="variable-color" 
-             style="background-color: ${
-               this.colorMap.get(variable) || this.activeColor
-             }">
-        </div>
-      `;
-
-      // Add event listeners
-      const checkbox = variableItem.querySelector(".variable-checkbox");
-      checkbox.addEventListener("change", (e) => {
-        if (e.target.checked) {
-          this.selectedVariables.add(variable);
-        } else {
-          this.selectedVariables.delete(variable);
-        }
-      });
-
-      variableList.appendChild(variableItem);
-    });
   }
 }
 
