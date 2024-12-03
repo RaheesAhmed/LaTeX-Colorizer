@@ -753,6 +753,105 @@ function setupControls() {
     });
 }
 
+// Initialize event handlers
+function initializeEventHandlers() {
+  console.log("Initializing event handlers...");
+
+  // Listen for messages from popup
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    try {
+      console.log("Received message:", message);
+
+      switch (message.type) {
+        case "settingsChanged":
+          handleSettingsChange(message.settings);
+          sendResponse({ success: true });
+          break;
+        case "getState":
+          const state = {
+            formulas: Array.from(formulaStore.formulas.values()),
+            variables: Array.from(formulaStore.variables),
+            sections: Array.from(formulaStore.sections.values()),
+            selectedVariables: Array.from(formulaStore.selectedVariables),
+            performance: PerformanceMonitor.getReport(),
+          };
+          sendResponse({ success: true, state });
+          break;
+        case "clearHighlights":
+          formulaStore.selectedVariables.clear();
+          highlightVariables();
+          sendResponse({ success: true });
+          break;
+        case "resetSettings":
+          resetToDefaultSettings();
+          sendResponse({ success: true });
+          break;
+        default:
+          console.warn("Unknown message type:", message.type);
+          sendResponse({ success: false, error: "Unknown message type" });
+      }
+    } catch (error) {
+      console.error("Error handling message:", error);
+      sendResponse({ success: false, error: error.message });
+    }
+    return true; // Keep the message channel open for async response
+  });
+
+  // Initialize performance monitoring
+  if (window.PerformanceMonitor) {
+    PerformanceMonitor.init();
+    setInterval(() => {
+      PerformanceMonitor.logReport();
+    }, 5000); // Log every 5 seconds
+  }
+}
+
+// Reset settings to default
+function resetToDefaultSettings() {
+  console.log("Resetting to default settings...");
+
+  formulaStore.selectedVariables.clear();
+  formulaStore.variableColors.clear();
+
+  const defaultSettings = {
+    autoHighlight: true,
+    showTooltips: true,
+    darkMode: false,
+    performanceMode: false,
+  };
+
+  chrome.storage.sync.set(defaultSettings, () => {
+    console.log("Settings reset to defaults");
+    highlightVariables();
+  });
+}
+
+// Handle settings changes
+function handleSettingsChange(settings) {
+  console.log("Settings changed:", settings);
+
+  if (settings.hasOwnProperty("autoHighlight")) {
+    if (!settings.autoHighlight) {
+      formulaStore.selectedVariables.clear();
+      highlightVariables();
+    }
+  }
+
+  if (settings.hasOwnProperty("performanceMode")) {
+    performanceCache.RENDER_THROTTLE = settings.performanceMode ? 32 : 16; // 30fps vs 60fps
+    performanceCache.BATCH_SIZE = settings.performanceMode ? 5 : 10;
+  }
+
+  if (settings.action === "clearHighlights") {
+    console.log("Clearing all highlights");
+    formulaStore.selectedVariables.clear();
+    highlightVariables();
+  } else if (settings.action === "applyHighlights") {
+    console.log("Applying highlights to all formulas");
+    highlightVariables();
+  }
+}
+
 // Start extension
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", init);
