@@ -1,6 +1,6 @@
-// Utility functions
+// Core utilities
 const utils = {
-  // Debounce: Delay execution until after wait time
+  // Debounce function
   debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -10,18 +10,6 @@ const utils = {
       };
       clearTimeout(timeout);
       timeout = setTimeout(later, wait);
-    };
-  },
-
-  // Throttle: Limit execution rate
-  throttle(func, limit) {
-    let inThrottle;
-    return function executedFunction(...args) {
-      if (!inThrottle) {
-        func(...args);
-        inThrottle = true;
-        setTimeout(() => (inThrottle = false), limit);
-      }
     };
   },
 
@@ -59,9 +47,40 @@ const utils = {
     return commands.has(str.toLowerCase());
   },
 
+  // Extract LaTeX from element
+  extractLatex(element) {
+    const cacheKey = element.innerHTML;
+    if (performanceCache.colorCache.has(cacheKey)) {
+      return performanceCache.colorCache.get(cacheKey);
+    }
+
+    let latex = "";
+    try {
+      const mathML = element.querySelector(".mwe-math-mathml-a11y");
+      if (mathML) {
+        const annotation = mathML.querySelector(
+          'annotation[encoding="application/x-tex"]'
+        );
+        latex = annotation ? annotation.textContent : "";
+      } else {
+        const fallbackImg = element.querySelector(
+          ".mwe-math-fallback-image-inline"
+        );
+        latex = fallbackImg ? fallbackImg.getAttribute("alt") : "";
+      }
+
+      if (latex) {
+        performanceCache.colorCache.set(cacheKey, latex);
+      }
+    } catch (error) {
+      console.error("Error extracting LaTeX:", error);
+    }
+
+    return latex;
+  },
+
   // Parse variables from LaTeX
   parseVariables(latex) {
-    // Check cache first
     const cacheKey = `vars_${latex}`;
     if (performanceCache.colorCache.has(cacheKey)) {
       return performanceCache.colorCache.get(cacheKey);
@@ -71,7 +90,6 @@ const utils = {
     const variables = new Set();
 
     try {
-      // Clean LaTeX before parsing
       const cleanLatex = latex
         .replace(/\\displaystyle/g, "")
         .replace(/\\text\{[^}]+\}/g, "")
@@ -81,7 +99,6 @@ const utils = {
         .replace(/\{|\}/g, " ")
         .trim();
 
-      // Common mathematical variables
       const commonVars = new Set([
         "x",
         "y",
@@ -100,7 +117,6 @@ const utils = {
         "φ",
       ]);
 
-      // Variable patterns
       const patterns = [
         /(?<!\\)[a-zA-Z](?![\d\s=+\-*/\\])/g,
         /\\(?:alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|omicron|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega)(?![a-zA-Z])/gi,
@@ -133,6 +149,57 @@ const utils = {
   },
 };
 
+// Tooltip management
+const tooltipManager = {
+  activeTooltip: null,
+
+  show(formula) {
+    this.hide();
+    const tooltip = document.createElement("div");
+    tooltip.className = "math-tooltip";
+    tooltip.innerHTML = `
+      <div class="tooltip-content">
+        <div class="tooltip-latex">${formula.latex}</div>
+        <div class="tooltip-variables">
+          Variables: ${formula.variables.join(", ")}
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(tooltip);
+    this.positionTooltip(tooltip, formula.element);
+    this.activeTooltip = tooltip;
+  },
+
+  hide() {
+    if (this.activeTooltip) {
+      this.activeTooltip.remove();
+      this.activeTooltip = null;
+    }
+  },
+
+  positionTooltip(tooltip, target) {
+    const rect = target.getBoundingClientRect();
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const scrollLeft =
+      window.pageXOffset || document.documentElement.scrollLeft;
+
+    tooltip.style.position = "absolute";
+    tooltip.style.top = `${rect.bottom + scrollTop}px`;
+    tooltip.style.left = `${rect.left + scrollLeft}px`;
+
+    const bounds = tooltip.getBoundingClientRect();
+    if (bounds.right > window.innerWidth) {
+      tooltip.style.left = `${
+        window.innerWidth - bounds.width - 10 + scrollLeft
+      }px`;
+    }
+    if (bounds.bottom > window.innerHeight) {
+      tooltip.style.top = `${rect.top + scrollTop - bounds.height}px`;
+    }
+  },
+};
+
 // Store for formula data
 const formulaStore = {
   formulas: new Map(),
@@ -142,7 +209,7 @@ const formulaStore = {
   variableColors: new Map(),
 };
 
-// Performance optimization: Add cache system
+// Performance cache
 const performanceCache = {
   formulaCache: new Map(),
   colorCache: new Map(),
@@ -154,14 +221,10 @@ const performanceCache = {
   BATCH_SIZE: 5,
 };
 
-let isInitialized = false;
-let initTimeout = null;
-
 // Initialize when DOM is ready
 function init() {
   if (isInitialized) return;
 
-  // Delay initialization to not block page load
   initTimeout = setTimeout(() => {
     console.log("Initializing LaTeX Formula Colorizer...");
     const mathElements = document.querySelectorAll(
@@ -190,13 +253,98 @@ function init() {
   }, 1000);
 }
 
-// Process formula with performance optimization
+// Setup observers for lazy loading
+function setupObservers(initialElements) {
+  // Intersection Observer for lazy loading
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const element = entry.target;
+          if (!element.hasAttribute("data-formula-processed")) {
+            element.setAttribute("data-formula-processed", "true");
+            requestIdleCallback(() => processFormula(element), {
+              timeout: 1000,
+            });
+          }
+          observer.unobserve(element);
+        }
+      });
+    },
+    {
+      rootMargin: "50px",
+      threshold: 0.1,
+    }
+  );
+
+  // Observe remaining elements
+  Array.from(initialElements)
+    .slice(3)
+    .forEach((element) => {
+      observer.observe(element);
+    });
+
+  // Mutation Observer for dynamic content
+  const mutationObserver = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      if (mutation.addedNodes.length) {
+        const mathElements = mutation.target.querySelectorAll(
+          ".mwe-math-element:not([data-formula-processed])"
+        );
+        mathElements.forEach((element) => observer.observe(element));
+      }
+    }
+  });
+
+  mutationObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
+}
+
+// Setup event handlers
+function setupEventHandlers() {
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    try {
+      console.log("Received message:", message);
+
+      switch (message.type) {
+        case "settingsChanged":
+          handleSettingsChange(message.settings);
+          sendResponse({ success: true });
+          break;
+        case "getState":
+          sendResponse({
+            success: true,
+            state: {
+              formulas: Array.from(formulaStore.formulas.values()),
+              variables: Array.from(formulaStore.variables),
+              sections: Array.from(formulaStore.sections.values()),
+              selectedVariables: Array.from(formulaStore.selectedVariables),
+              performance: window.PerformanceMonitor?.getReport(),
+            },
+          });
+          break;
+        default:
+          console.warn("Unknown message type:", message.type);
+          sendResponse({ success: false, error: "Unknown message type" });
+      }
+    } catch (error) {
+      console.error("Error handling message:", error);
+      sendResponse({ success: false, error: error.message });
+    }
+    return true;
+  });
+}
+
+// Process formula
 function processFormula(element) {
   try {
     const startTime = performance.now();
     const id =
       element.getAttribute("data-formula-id") ||
       `formula-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    element.setAttribute("data-formula-id", id);
 
     // Check cache first
     if (performanceCache.formulaCache.has(id)) {
@@ -204,7 +352,7 @@ function processFormula(element) {
     }
 
     // Get LaTeX content efficiently
-    const latex = extractLatex(element);
+    const latex = utils.extractLatex(element);
     if (!latex) return null;
 
     // Create formula object
@@ -243,7 +391,7 @@ function processFormula(element) {
   }
 }
 
-// Setup formula handlers with utils.debounce
+// Setup formula handlers
 function setupFormulaHandlers(formula) {
   const domCache = performanceCache.domCache.get(formula.element);
   if (!domCache) return;
@@ -256,7 +404,7 @@ function setupFormulaHandlers(formula) {
     domCache.handlers.clear();
   }
 
-  // Add optimized handlers using utils.debounce
+  // Add optimized handlers
   const clickHandler = utils.debounce((e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -265,11 +413,13 @@ function setupFormulaHandlers(formula) {
 
   const enterHandler = utils.debounce(() => {
     if (!performanceCache.isRendering) {
-      showTooltip(formula);
+      tooltipManager.show(formula);
     }
   }, 50);
 
-  const leaveHandler = utils.debounce(hideTooltip, 50);
+  const leaveHandler = utils.debounce(() => {
+    tooltipManager.hide();
+  }, 50);
 
   formula.element.addEventListener("click", clickHandler);
   formula.element.addEventListener("mouseenter", enterHandler);
@@ -283,14 +433,29 @@ function setupFormulaHandlers(formula) {
   formula.element.classList.add("formula-interactive");
 }
 
-// Start extension with delayed initialization
+// Handle formula click
+function handleFormulaClick(formula) {
+  console.log("Formula clicked:", formula);
+  // Implement click handling logic here
+}
+
+// Handle settings changes
+function handleSettingsChange(settings) {
+  console.log("Settings changed:", settings);
+  // Implement settings change logic here
+}
+
+let isInitialized = false;
+let initTimeout = null;
+
+// Start extension
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", init);
 } else {
   init();
 }
 
-// Cleanup on page unload
+// Cleanup on unload
 window.addEventListener("unload", () => {
   if (initTimeout) {
     clearTimeout(initTimeout);
