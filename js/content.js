@@ -436,7 +436,15 @@ function setupFormulaHandlers(formula) {
 // Handle formula click
 function handleFormulaClick(formula) {
   console.log("Formula clicked:", formula);
-  // Implement click handling logic here
+
+  // Initialize variable manager if not already done
+  if (!window.variableManager) {
+    window.variableManager = new VariableManager();
+    window.variableManager.init();
+  }
+
+  // Show the formula controls panel
+  window.variableManager.showPanel(formula);
 }
 
 // Handle settings changes
