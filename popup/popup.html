@@ -3,86 +3,89 @@
   <head>
     <meta charset="UTF-8" />
     <title>LaTeX Formula Colorizer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
     <link rel="stylesheet" href="../styles/popup.css" />
   </head>
   <body>
     <div class="header">
-      <img src="../icons/icon-48.png" alt="Logo" />
-      <h1>LaTeX Formula Colorizer</h1>
+      <div class="flex items-center space-x-4">
+        <img src="../icons/icon-48.png" alt="Logo" class="w-10 h-10 rounded-xl shadow-lg" />
+        <h1 class="text-2xl font-semibold text-white m-0">LaTeX Formula Colorizer</h1>
+      </div>
     </div>
 
-    <div class="main-content">
-      <!-- Mode Selection -->
-      <div class="mode-selector">
-        <button class="mode-btn active" data-mode="variable">
-          Variable Mode
-        </button>
-        <button class="mode-btn" data-mode="equation">Equation Mode</button>
+    <div class="main-content p-6">
+      <div class="mode-selector flex space-x-4 mb-6">
+        <button class="mode-btn active flex-1" data-mode="variable">Variable Mode</button>
+        <button class="mode-btn flex-1" data-mode="equation">Equation Mode</button>
       </div>
 
-      <!-- Variable Coloring Section -->
       <div class="section" id="variable-section">
-        <h2>Common Variables</h2>
-        <div class="variable-grid">
+        <h2 class="text-xl font-semibold mb-4">Common Variables</h2>
+        <div class="variable-grid grid grid-cols-2 gap-4 mb-6">
           <div class="variable-item">
-            <span class="variable-preview">x</span>
-            <input type="color" id="xColor" value="#FF4444" />
-            <label>Variables x, x₁, x₂...</label>
+            <div class="flex items-center space-x-4">
+              <span class="variable-preview text-xl font-serif italic">x</span>
+              <input type="color" id="xColor" value="#FF4444" />
+              <label class="text-sm text-gray-600 dark:text-gray-300">Variables x, x₁, x₂...</label>
+            </div>
           </div>
           <div class="variable-item">
-            <span class="variable-preview">y</span>
-            <input type="color" id="yColor" value="#44FF44" />
-            <label>Variables y, y₁, y₂...</label>
+            <div class="flex items-center space-x-4">
+              <span class="variable-preview text-xl font-serif italic">y</span>
+              <input type="color" id="yColor" value="#44FF44" />
+              <label class="text-sm text-gray-600 dark:text-gray-300">Variables y, y₁, y₂...</label>
+            </div>
           </div>
           <div class="variable-item">
-            <span class="variable-preview">β</span>
-            <input type="color" id="betaColor" value="#4444FF" />
-            <label>Parameters β, β₁, β₂...</label>
+            <div class="flex items-center space-x-4">
+              <span class="variable-preview text-xl font-serif italic">β</span>
+              <input type="color" id="betaColor" value="#4444FF" />
+              <label class="text-sm text-gray-600 dark:text-gray-300">Parameters β, β₁, β₂...</label>
+            </div>
           </div>
           <div class="variable-item">
-            <span class="variable-preview">ε</span>
-            <input type="color" id="epsilonColor" value="#FF44FF" />
-            <label>Error terms ε, ε₁, ε₂...</label>
+            <div class="flex items-center space-x-4">
+              <span class="variable-preview text-xl font-serif italic">ε</span>
+              <input type="color" id="epsilonColor" value="#FF44FF" />
+              <label class="text-sm text-gray-600 dark:text-gray-300">Error terms ε, ε₁, ε₂...</label>
+            </div>
           </div>
         </div>
 
         <div class="detected-variables">
-          <h3>Detected Variables</h3>
-          <div id="detectedVarList" class="variable-list">
-            <!-- Dynamically populated -->
-          </div>
+          <h3 class="text-lg font-medium mb-3">Detected Variables</h3>
+          <div id="detectedVarList" class="variable-list bg-gray-50 dark:bg-gray-800 rounded-xl p-4"></div>
         </div>
 
-        <div class="custom-variable">
-          <h3>Add Custom Variable</h3>
-          <div class="custom-var-input">
+        <div class="custom-variable mt-6">
+          <h3 class="text-lg font-medium mb-3">Add Custom Variable</h3>
+          <div class="custom-var-input flex items-center space-x-4">
             <input
               type="text"
               id="newVarName"
               placeholder="Variable name (e.g., α, θ)"
+              class="flex-1"
             />
             <input type="color" id="newVarColor" value="#000000" />
-            <button id="addVarBtn">Add</button>
+            <button id="addVarBtn" class="primary">Add</button>
           </div>
         </div>
       </div>
 
-      <!-- Equation Coloring Section -->
       <div class="section" id="equation-section">
-        <h2>Equation Styling</h2>
-        <div class="equation-list" id="equationList">
-          <!-- Dynamically populated -->
-        </div>
+        <h2 class="text-xl font-semibold mb-4">Equation Styling</h2>
+        <div class="equation-list mb-6" id="equationList"></div>
         <div class="equation-style">
-          <h3>Style Options</h3>
-          <div class="style-controls">
+          <h3 class="text-lg font-medium mb-3">Style Options</h3>
+          <div class="style-controls grid grid-cols-2 gap-4">
             <div class="control-group">
-              <label>Background Color</label>
+              <label class="block text-sm font-medium mb-2">Background Color</label>
               <input type="color" id="eqBgColor" value="#F0F0F0" />
             </div>
             <div class="control-group">
-              <label>Border Style</label>
-              <select id="eqBorderStyle">
+              <label class="block text-sm font-medium mb-2">Border Style</label>
+              <select id="eqBorderStyle" class="w-full">
                 <option value="none">None</option>
                 <option value="solid">Solid</option>
                 <option value="dashed">Dashed</option>
@@ -90,7 +93,7 @@
               </select>
             </div>
             <div class="control-group">
-              <label>Border Color</label>
+              <label class="block text-sm font-medium mb-2">Border Color</label>
               <input type="color" id="eqBorderColor" value="#CCCCCC" />
             </div>
           </div>
@@ -99,36 +102,36 @@
 
       <!-- Color Management -->
       <div class="section">
-        <h2>Color Management</h2>
+        <h2 class="text-xl font-semibold mb-4">Color Management</h2>
         <div class="color-presets">
-          <h3>Preset Palettes</h3>
-          <div class="preset-grid">
+          <h3 class="text-lg font-medium mb-3">Preset Palettes</h3>
+          <div class="preset-grid grid grid-cols-2 gap-4">
             <button class="preset-btn" data-palette="default">Default</button>
-            <button class="preset-btn" data-palette="contrast">
-              High Contrast
-            </button>
-            <button class="preset-btn" data-palette="colorblind">
-              Colorblind Safe
-            </button>
+            <button class="preset-btn" data-palette="contrast">High Contrast</button>
+            <button class="preset-btn" data-palette="colorblind">Colorblind Safe</button>
             <button class="preset-btn" data-palette="pastel">Pastel</button>
           </div>
         </div>
         <div class="saved-palettes">
-          <h3>Saved Palettes</h3>
-          <select id="savedPaletteSelect">
+          <h3 class="text-lg font-medium mb-3">Saved Palettes</h3>
+          <select id="savedPaletteSelect" class="w-full">
             <option value="">Select a saved palette...</option>
           </select>
-          <button id="savePaletteBtn">Save Current</button>
-          <button id="deletePaletteBtn">Delete</button>
+          <div class="flex space-x-4 mt-4">
+            <button id="savePaletteBtn" class="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700">Save Current</button>
+            <button id="deletePaletteBtn" class="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700">Delete</button>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="footer">
-      <div class="status" id="status"></div>
-      <div class="actions">
-        <button id="resetBtn">Reset</button>
-        <button id="applyBtn" class="primary">Apply Changes</button>
+    <div class="footer fixed bottom-0 left-0 right-0">
+      <div class="flex justify-between items-center">
+        <div class="status" id="status"></div>
+        <div class="actions flex space-x-4">
+          <button id="resetBtn" class="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700">Reset</button>
+          <button id="applyBtn" class="primary">Apply Changes</button>
+        </div>
       </div>
     </div>
 
