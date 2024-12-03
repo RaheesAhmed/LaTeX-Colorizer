@@ -2,33 +2,248 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>Wikipedia Math Enhancer</title>
-    <link rel="stylesheet" href="../css/popup.css" />
+    <title>LaTeX Formula Colorizer</title>
+    <style>
+      :root {
+        --color-primary: #1a2b4c;
+        --color-secondary: #e5e9f0;
+        --color-accent: #b8a355;
+        --color-success: #10b981;
+        --color-text: #0f172a;
+        --color-subtle: #64748b;
+        --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.05);
+        --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.08);
+        --space-4: 4px;
+        --space-8: 8px;
+        --space-16: 16px;
+        --space-24: 24px;
+      }
+
+      body {
+        width: 360px;
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+        background: var(--color-secondary);
+        color: var(--color-text);
+      }
+
+      .header {
+        background: var(--color-primary);
+        padding: var(--space-16);
+        text-align: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .header h1 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-8);
+      }
+
+      .header img {
+        width: 24px;
+        height: 24px;
+      }
+
+      .content {
+        padding: var(--space-16);
+        background: white;
+        border-radius: 6px;
+        margin: var(--space-16);
+        box-shadow: var(--shadow-md);
+      }
+
+      .section {
+        margin-bottom: var(--space-24);
+      }
+
+      .section:last-child {
+        margin-bottom: 0;
+      }
+
+      .section-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--color-primary);
+        margin-bottom: var(--space-8);
+        display: flex;
+        align-items: center;
+        gap: var(--space-8);
+      }
+
+      .status {
+        display: flex;
+        align-items: center;
+        gap: var(--space-8);
+        padding: var(--space-8);
+        background: var(--color-secondary);
+        border-radius: 4px;
+        margin-bottom: var(--space-16);
+      }
+
+      .status-indicator {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--color-success);
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+      }
+
+      .status-text {
+        font-size: 14px;
+        color: var(--color-text);
+      }
+
+      .controls {
+        display: grid;
+        gap: var(--space-8);
+      }
+
+      .control-item {
+        display: flex;
+        align-items: center;
+        gap: var(--space-8);
+        padding: var(--space-8);
+        background: var(--color-secondary);
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s ease-in-out;
+      }
+
+      .control-item:hover {
+        background: rgba(26, 43, 76, 0.05);
+      }
+
+      .control-item input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        border: 2px solid var(--color-primary);
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      .control-label {
+        font-size: 14px;
+        color: var(--color-text);
+        flex: 1;
+      }
+
+      .button-group {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-8);
+        margin-top: var(--space-16);
+      }
+
+      button {
+        padding: var(--space-8) var(--space-16);
+        border: 2px solid var(--color-primary);
+        border-radius: 4px;
+        background: white;
+        color: var(--color-primary);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease-in-out;
+      }
+
+      button:hover {
+        background: var(--color-primary);
+        color: white;
+      }
+
+      button.primary {
+        background: var(--color-primary);
+        color: white;
+      }
+
+      button.primary:hover {
+        background: var(--color-accent);
+        border-color: var(--color-accent);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --color-primary: #2d4a77;
+          --color-secondary: #1f2937;
+          --color-text: #f3f4f6;
+          --color-subtle: #9ca3af;
+        }
+
+        body {
+          background: var(--color-secondary);
+        }
+
+        .content {
+          background: var(--color-secondary);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .control-item {
+          background: rgba(255, 255, 255, 0.05);
+        }
+
+        .control-item:hover {
+          background: rgba(255, 255, 255, 0.1);
+        }
+
+        button {
+          background: var(--color-secondary);
+          color: var(--color-text);
+        }
+      }
+    </style>
   </head>
   <body>
-    <div class="container">
-      <h2>Wikipedia Math Enhancer</h2>
-      <div class="settings">
-        <label>
-          <input type="checkbox" id="enabled" checked />
-          Enable Formula Enhancement
-        </label>
-        <label>
-          <input type="checkbox" id="autoRender" checked />
-          Auto-render Formulas
-        </label>
-        <div class="display-mode">
-          <label>Display Mode:</label>
-          <select id="displayMode">
-            <option value="block">Block</option>
-            <option value="inline">Inline</option>
-          </select>
+    <div class="header">
+      <h1>
+        <img src="../icons/icon48.png" alt="Logo" />
+        LaTeX Formula Colorizer
+      </h1>
+    </div>
+
+    <div class="content">
+      <div class="section">
+        <div class="status">
+          <div class="status-indicator"></div>
+          <span class="status-text">Extension is active</span>
         </div>
       </div>
-      <div class="status">
-        <p id="status-message">Ready to enhance math formulas</p>
+
+      <div class="section">
+        <div class="section-title">Global Controls</div>
+        <div class="controls">
+          <label class="control-item">
+            <input type="checkbox" id="autoHighlight" checked />
+            <span class="control-label">Auto-highlight formulas</span>
+          </label>
+          <label class="control-item">
+            <input type="checkbox" id="showTooltips" checked />
+            <span class="control-label">Show tooltips</span>
+          </label>
+          <label class="control-item">
+            <input type="checkbox" id="darkMode" />
+            <span class="control-label">Dark mode</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Actions</div>
+        <div class="button-group">
+          <button id="clearHighlights">Clear All</button>
+          <button id="applyHighlights" class="primary">Apply All</button>
+        </div>
       </div>
     </div>
+
     <script src="popup.js"></script>
   </body>
 </html>
