@@ -1,53 +1,40 @@
 {
   "manifest_version": 3,
-<<<<<<< HEAD
   "name": "LaTeX Formula Colorizer",
   "version": "1.0",
-  "description": "Enhance mathematical formulas on Wikipedia with interactive color coding",
-  "permissions": ["storage", "activeTab"],
+  "description": "Enhance Wikipedia's mathematical formulas with interactive color highlighting",
+  "permissions": ["storage", "activeTab", "scripting", "contextMenus"],
+  "host_permissions": ["*://*.wikipedia.org/*"],
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {
-      "16": "icons/icon-16.png",
-      "48": "icons/icon-48.png",
-      "128": "icons/icon-128.png"
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
     }
   },
   "icons": {
-    "16": "icons/icon-16.png",
-    "48": "icons/icon-48.png",
-    "128": "icons/icon-128.png"
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
   },
   "content_scripts": [
     {
       "matches": ["*://*.wikipedia.org/*"],
-      "css": ["css/content.css"],
-      "js": ["js/performance-monitor.js", "js/content.js"],
-      "run_at": "document_idle"
-    }
-  ],
-  "background": {
-    "service_worker": "background.js"
-  }
-=======
-  "name": "LaTeX Color Highlighter",
-  "version": "1.0",
-  "description": "Highlights LaTeX variables and text in mathematical articles",
-  "permissions": ["activeTab", "scripting", "storage", "contextMenus"],
-  "host_permissions": ["*://*.wikipedia.org/*"],
-  "action": {
-    "default_popup": "popup.html",
-    "default_icon": {
-      "16": "/icons/icon-16.png",
-      "48": "/icons/icon-48.png",
-      "128": "/icons/icon-128.png"
-    }
-  },
-  "content_scripts": [
-    {
-      "matches": ["*://*.wikipedia.org/*"],
-      "js": ["lib/katex.min.js", "content.js"],
-      "css": ["lib/katex.min.css", "styles/content.css"]
+      "css": [
+        "css/content.css",
+        "css/variable-manager.css",
+        "css/color-manager.css",
+        "css/section-manager.css"
+      ],
+      "js": [
+        "js/variable-manager.js",
+        "js/color-manager.js",
+        "js/section-manager.js",
+        "js/performance-monitor.js",
+        "js/content.js"
+      ],
+      "type": "module"
     }
   ],
   "web_accessible_resources": [
@@ -55,6 +42,9 @@
       "resources": ["lib/fonts/*", "fonts/*", "lib/*", "styles/*"],
       "matches": ["*://*.wikipedia.org/*"]
     }
-  ]
->>>>>>> origin/main
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  }
 }
