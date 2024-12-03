@@ -1,3 +1,138 @@
+// Utility functions
+const utils = {
+  // Debounce: Delay execution until after wait time
+  debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  },
+
+  // Throttle: Limit execution rate
+  throttle(func, limit) {
+    let inThrottle;
+    return function executedFunction(...args) {
+      if (!inThrottle) {
+        func(...args);
+        inThrottle = true;
+        setTimeout(() => (inThrottle = false), limit);
+      }
+    };
+  },
+
+  // Clean variable name
+  cleanVariable(variable) {
+    try {
+      return variable
+        .replace(/^\\/, "")
+        .replace(/\{|\}/g, "")
+        .replace(/^(mathbf|vec)/, "")
+        .trim();
+    } catch (error) {
+      console.error("Error cleaning variable:", error);
+      return "";
+    }
+  },
+
+  // Check for LaTeX commands
+  isLatexCommand(str) {
+    const commands = new Set([
+      "sum",
+      "int",
+      "frac",
+      "sqrt",
+      "text",
+      "mathbf",
+      "mathrm",
+      "left",
+      "right",
+      "begin",
+      "end",
+      "cdot",
+      "times",
+    ]);
+    return commands.has(str.toLowerCase());
+  },
+
+  // Parse variables from LaTeX
+  parseVariables(latex) {
+    // Check cache first
+    const cacheKey = `vars_${latex}`;
+    if (performanceCache.colorCache.has(cacheKey)) {
+      return performanceCache.colorCache.get(cacheKey);
+    }
+
+    console.log("Parsing variables from:", latex);
+    const variables = new Set();
+
+    try {
+      // Clean LaTeX before parsing
+      const cleanLatex = latex
+        .replace(/\\displaystyle/g, "")
+        .replace(/\\text\{[^}]+\}/g, "")
+        .replace(/\\left|\\right/g, "")
+        .replace(/\\begin\{[^}]+\}|\\end\{[^}]+\}/g, "")
+        .replace(/\\[a-zA-Z]+(?![a-zA-Z])/g, " ")
+        .replace(/\{|\}/g, " ")
+        .trim();
+
+      // Common mathematical variables
+      const commonVars = new Set([
+        "x",
+        "y",
+        "z",
+        "n",
+        "i",
+        "j",
+        "k",
+        "a",
+        "b",
+        "c",
+        "α",
+        "β",
+        "γ",
+        "θ",
+        "φ",
+      ]);
+
+      // Variable patterns
+      const patterns = [
+        /(?<!\\)[a-zA-Z](?![\d\s=+\-*/\\])/g,
+        /\\(?:alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|omicron|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega)(?![a-zA-Z])/gi,
+        /([a-zA-Z])_([a-zA-Z0-9]+)/g,
+        /\\(?:vec|mathbf)\{([a-zA-Z])\}/g,
+      ];
+
+      patterns.forEach((pattern) => {
+        const matches = cleanLatex.matchAll(pattern);
+        for (const match of matches) {
+          const variable = this.cleanVariable(match[0]);
+          if (variable && !this.isLatexCommand(variable)) {
+            if (commonVars.has(variable)) {
+              variables.add(variable);
+            } else if (variable.length === 1 || variable.includes("_")) {
+              variables.add(variable);
+            }
+          }
+        }
+      });
+
+      const result = Array.from(variables);
+      performanceCache.colorCache.set(cacheKey, result);
+      console.log("Parsed variables:", result);
+      return result;
+    } catch (error) {
+      console.error("Error parsing variables:", error);
+      return [];
+    }
+  },
+};
+
 // Store for formula data
 const formulaStore = {
   formulas: new Map(),
@@ -52,117 +187,32 @@ function init() {
     setupEventHandlers();
 
     isInitialized = true;
-  }, 1000); // Wait for 1 second after page load
+  }, 1000);
 }
 
-// Setup observers for lazy loading
-function setupObservers(initialElements) {
-  // Intersection Observer for lazy loading
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          const element = entry.target;
-          if (!element.hasAttribute("data-formula-processed")) {
-            element.setAttribute("data-formula-processed", "true");
-            requestIdleCallback(() => processFormula(element), {
-              timeout: 1000,
-            });
-          }
-          observer.unobserve(element);
-        }
-      });
-    },
-    {
-      rootMargin: "50px",
-      threshold: 0.1,
-    }
-  );
-
-  // Observe remaining elements
-  Array.from(initialElements)
-    .slice(3)
-    .forEach((element) => {
-      observer.observe(element);
-    });
-
-  // Mutation Observer for dynamic content
-  const mutationObserver = new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-      if (mutation.addedNodes.length) {
-        const mathElements = mutation.target.querySelectorAll(
-          ".mwe-math-element:not([data-formula-processed])"
-        );
-        mathElements.forEach((element) => observer.observe(element));
-      }
-    }
-  });
-
-  mutationObserver.observe(document.body, {
-    childList: true,
-    subtree: true,
-  });
-}
-
-// Setup event handlers
-function setupEventHandlers() {
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    try {
-      console.log("Received message:", message);
-
-      switch (message.type) {
-        case "settingsChanged":
-          handleSettingsChange(message.settings);
-          sendResponse({ success: true });
-          break;
-        case "getState":
-          sendResponse({
-            success: true,
-            state: {
-              formulas: Array.from(formulaStore.formulas.values()),
-              variables: Array.from(formulaStore.variables),
-              sections: Array.from(formulaStore.sections.values()),
-              selectedVariables: Array.from(formulaStore.selectedVariables),
-              performance: window.PerformanceMonitor?.getReport(),
-            },
-          });
-          break;
-        default:
-          console.warn("Unknown message type:", message.type);
-          sendResponse({ success: false, error: "Unknown message type" });
-      }
-    } catch (error) {
-      console.error("Error handling message:", error);
-      sendResponse({ success: false, error: error.message });
-    }
-    return true;
-  });
-}
-
-// Process formula efficiently
+// Process formula with performance optimization
 function processFormula(element) {
-  const startTime = performance.now();
   try {
+    const startTime = performance.now();
     const id =
       element.getAttribute("data-formula-id") ||
       `formula-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    element.setAttribute("data-formula-id", id);
 
-    // Check cache
+    // Check cache first
     if (performanceCache.formulaCache.has(id)) {
       return performanceCache.formulaCache.get(id);
     }
 
-    // Extract LaTeX efficiently
+    // Get LaTeX content efficiently
     const latex = extractLatex(element);
     if (!latex) return null;
 
-    // Process formula data
+    // Create formula object
     const formula = {
       id,
       latex,
       element,
-      variables: parseVariables(latex),
+      variables: utils.parseVariables(latex),
       timestamp: Date.now(),
     };
 
@@ -193,39 +243,7 @@ function processFormula(element) {
   }
 }
 
-// Extract LaTeX with caching
-function extractLatex(element) {
-  const cacheKey = element.innerHTML;
-  if (performanceCache.colorCache.has(cacheKey)) {
-    return performanceCache.colorCache.get(cacheKey);
-  }
-
-  let latex = "";
-  try {
-    const mathML = element.querySelector(".mwe-math-mathml-a11y");
-    if (mathML) {
-      const annotation = mathML.querySelector(
-        'annotation[encoding="application/x-tex"]'
-      );
-      latex = annotation ? annotation.textContent : "";
-    } else {
-      const fallbackImg = element.querySelector(
-        ".mwe-math-fallback-image-inline"
-      );
-      latex = fallbackImg ? fallbackImg.getAttribute("alt") : "";
-    }
-
-    if (latex) {
-      performanceCache.colorCache.set(cacheKey, latex);
-    }
-  } catch (error) {
-    console.error("Error extracting LaTeX:", error);
-  }
-
-  return latex;
-}
-
-// Setup minimal formula handlers
+// Setup formula handlers with utils.debounce
 function setupFormulaHandlers(formula) {
   const domCache = performanceCache.domCache.get(formula.element);
   if (!domCache) return;
@@ -238,20 +256,20 @@ function setupFormulaHandlers(formula) {
     domCache.handlers.clear();
   }
 
-  // Add optimized handlers
-  const clickHandler = debounce((e) => {
+  // Add optimized handlers using utils.debounce
+  const clickHandler = utils.debounce((e) => {
     e.preventDefault();
     e.stopPropagation();
     handleFormulaClick(formula);
   }, 100);
 
-  const enterHandler = debounce(() => {
+  const enterHandler = utils.debounce(() => {
     if (!performanceCache.isRendering) {
       showTooltip(formula);
     }
   }, 50);
 
-  const leaveHandler = debounce(hideTooltip, 50);
+  const leaveHandler = utils.debounce(hideTooltip, 50);
 
   formula.element.addEventListener("click", clickHandler);
   formula.element.addEventListener("mouseenter", enterHandler);
@@ -282,145 +300,3 @@ window.addEventListener("unload", () => {
   formulaStore.formulas.clear();
   formulaStore.variables.clear();
 });
-
-// Parse variables from LaTeX with optimization
-function parseVariables(latex) {
-  // Check cache first
-  const cacheKey = `vars_${latex}`;
-  if (performanceCache.colorCache.has(cacheKey)) {
-    return performanceCache.colorCache.get(cacheKey);
-  }
-
-  console.log("Parsing variables from:", latex);
-  const variables = new Set();
-
-  try {
-    // Clean LaTeX before parsing
-    const cleanLatex = latex
-      .replace(/\\displaystyle/g, "")
-      .replace(/\\text\{[^}]+\}/g, "")
-      .replace(/\\left|\\right/g, "")
-      .replace(/\\begin\{[^}]+\}|\\end\{[^}]+\}/g, "")
-      .replace(/\\[a-zA-Z]+(?![a-zA-Z])/g, " ") // Remove LaTeX commands
-      .replace(/\{|\}/g, " ")
-      .trim();
-
-    // Common mathematical variables
-    const commonVars = new Set([
-      "x",
-      "y",
-      "z",
-      "n",
-      "i",
-      "j",
-      "k",
-      "a",
-      "b",
-      "c",
-      "α",
-      "β",
-      "γ",
-      "θ",
-      "φ",
-    ]);
-
-    // Variable patterns
-    const patterns = [
-      // Single letters (excluding numbers and operators)
-      /(?<!\\)[a-zA-Z](?![\d\s=+\-*/\\])/g,
-
-      // Greek letters
-      /\\(?:alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|omicron|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega)(?![a-zA-Z])/gi,
-
-      // Subscripted variables
-      /([a-zA-Z])_([a-zA-Z0-9]+)/g,
-
-      // Vector/matrix variables
-      /\\(?:vec|mathbf)\{([a-zA-Z])\}/g,
-    ];
-
-    // Process each pattern
-    patterns.forEach((pattern) => {
-      const matches = cleanLatex.matchAll(pattern);
-      for (const match of matches) {
-        const variable = cleanVariable(match[0]);
-        if (variable && !isLatexCommand(variable)) {
-          // Prioritize common mathematical variables
-          if (commonVars.has(variable)) {
-            variables.add(variable);
-          } else if (variable.length === 1 || variable.includes("_")) {
-            variables.add(variable);
-          }
-        }
-      }
-    });
-
-    // Cache the result
-    const result = Array.from(variables);
-    performanceCache.colorCache.set(cacheKey, result);
-    console.log("Parsed variables:", result);
-    return result;
-  } catch (error) {
-    console.error("Error parsing variables:", error);
-    return [];
-  }
-}
-
-// Clean variable name
-function cleanVariable(variable) {
-  try {
-    return variable
-      .replace(/^\\/, "")
-      .replace(/\{|\}/g, "")
-      .replace(/^(mathbf|vec)/, "")
-      .trim();
-  } catch (error) {
-    console.error("Error cleaning variable:", error);
-    return "";
-  }
-}
-
-// Check for LaTeX commands
-function isLatexCommand(str) {
-  const commands = new Set([
-    "sum",
-    "int",
-    "frac",
-    "sqrt",
-    "text",
-    "mathbf",
-    "mathrm",
-    "left",
-    "right",
-    "begin",
-    "end",
-    "cdot",
-    "times",
-  ]);
-  return commands.has(str.toLowerCase());
-}
-
-// Utility: Debounce function
-function debounce(func, wait) {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-}
-
-// Utility: Throttle function
-function throttle(func, limit) {
-  let inThrottle;
-  return function executedFunction(...args) {
-    if (!inThrottle) {
-      func(...args);
-      inThrottle = true;
-      setTimeout(() => (inThrottle = false), limit);
-    }
-  };
-}
