@@ -299,6 +299,19 @@ function handleFormulaClick(formula) {
   const variableList = document.createElement("div");
   variableList.className = "math-variable-list";
 
+  // Add header with close button
+  const header = document.createElement("div");
+  header.className = "variable-container-header";
+  header.innerHTML = `
+    <h3>Formula Variables</h3>
+    <button class="close-button">×</button>
+  `;
+
+  // Add close button handler
+  header.querySelector(".close-button").addEventListener("click", () => {
+    document.querySelector(".math-variable-container").remove();
+  });
+
   formula.variables.forEach((variable) => {
     const color = getVariableColor(variable);
     const variableEl = document.createElement("div");
@@ -310,12 +323,21 @@ function handleFormulaClick(formula) {
         <span class="variable-name">${variable}</span>
         <div class="variable-color-controls">
           <span class="variable-color" style="background-color: ${color}"></span>
-          <input type="color" class="color-picker" value="${rgbToHex(color)}" 
-            data-variable="${variable}">
+          <div class="color-picker-container">
+            <input type="color" class="color-picker" value="${rgbToHex(color)}" 
+              data-variable="${variable}">
+            <div class="color-controls">
+              <input type="range" class="hue-slider" min="0" max="360" value="180">
+              <input type="range" class="saturation-slider" min="0" max="100" value="70">
+              <input type="range" class="lightness-slider" min="0" max="100" value="45">
+              <input type="range" class="opacity-slider" min="0" max="100" value="100">
+            </div>
+          </div>
         </div>
       </label>
     `;
 
+    // Add event listeners
     const checkbox = variableEl.querySelector("input[type='checkbox']");
     checkbox.addEventListener("change", (e) => {
       console.log(
@@ -330,64 +352,56 @@ function handleFormulaClick(formula) {
     });
 
     const colorPicker = variableEl.querySelector(".color-picker");
-    colorPicker.addEventListener("change", (e) => {
-      const newColor = e.target.value;
-      const hslColor = hexToHSL(newColor);
-      formulaStore.variableColors.set(variable, hslColor);
+    const colorControls = variableEl.querySelector(".color-controls");
+    let isColorPickerOpen = false;
+
+    // Show/hide color controls on color picker click
+    variableEl
+      .querySelector(".variable-color")
+      .addEventListener("click", (e) => {
+        e.stopPropagation();
+        isColorPickerOpen = !isColorPickerOpen;
+        colorControls.style.display = isColorPickerOpen ? "block" : "none";
+      });
+
+    // Update color when sliders change
+    const updateColorFromSliders = () => {
+      const hue = variableEl.querySelector(".hue-slider").value;
+      const saturation = variableEl.querySelector(".saturation-slider").value;
+      const lightness = variableEl.querySelector(".lightness-slider").value;
+      const opacity = variableEl.querySelector(".opacity-slider").value;
+
+      const newColor = `hsla(${hue}, ${saturation}%, ${lightness}%, ${
+        opacity / 100
+      })`;
+      formulaStore.variableColors.set(variable, newColor);
       variableEl.querySelector(".variable-color").style.backgroundColor =
-        hslColor;
+        newColor;
       highlightVariables();
+    };
+
+    variableEl.querySelectorAll("input[type='range']").forEach((slider) => {
+      slider.addEventListener("input", updateColorFromSliders);
+    });
+
+    // Close color picker when clicking outside
+    document.addEventListener("click", (e) => {
+      if (!variableEl.contains(e.target)) {
+        isColorPickerOpen = false;
+        colorControls.style.display = "none";
+      }
     });
 
     variableList.appendChild(variableEl);
   });
 
-  const controls = document.createElement("div");
-  controls.className = "math-controls";
-  controls.innerHTML = `
-    <button class="select-all">Select All</button>
-    <button class="clear-all">Clear All</button>
-  `;
-
-  controls.querySelector(".select-all").addEventListener("click", () => {
-    console.log("Selecting all variables");
-    formula.variables.forEach((v) => formulaStore.selectedVariables.add(v));
-    variableList
-      .querySelectorAll("input")
-      .forEach((input) => (input.checked = true));
-    highlightVariables();
-  });
-
-  controls.querySelector(".clear-all").addEventListener("click", () => {
-    console.log("Clearing all variables");
-    formulaStore.selectedVariables.clear();
-    variableList
-      .querySelectorAll("input")
-      .forEach((input) => (input.checked = false));
-    highlightVariables();
-  });
-
   const container = document.createElement("div");
   container.className = "math-variable-container";
+  container.appendChild(header);
   container.appendChild(variableList);
-  container.appendChild(controls);
 
   document.body.appendChild(container);
   positionElement(container, formula.element);
-
-  // Close container when clicking outside
-  document.addEventListener(
-    "click",
-    (e) => {
-      if (
-        !container.contains(e.target) &&
-        !formula.element.contains(e.target)
-      ) {
-        container.remove();
-      }
-    },
-    { once: true }
-  );
 }
 
 // Show formula tooltip

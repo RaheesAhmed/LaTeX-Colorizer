@@ -199,6 +199,108 @@
           color: var(--color-text);
         }
       }
+
+      .features-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-16);
+        margin-bottom: var(--space-24);
+      }
+
+      .feature-card {
+        background: var(--color-secondary);
+        border-radius: 6px;
+        padding: var(--space-16);
+      }
+
+      .feature-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--color-primary);
+        margin-bottom: var(--space-8);
+      }
+
+      .color-presets {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: var(--space-4);
+        margin-bottom: var(--space-16);
+      }
+
+      .preset-color {
+        width: 24px;
+        height: 24px;
+        border-radius: 4px;
+        cursor: pointer;
+        border: 2px solid var(--color-secondary);
+      }
+
+      .preset-color:hover {
+        transform: scale(1.1);
+      }
+
+      .color-controls {
+        display: grid;
+        gap: var(--space-8);
+      }
+
+      .control-group {
+        display: flex;
+        align-items: center;
+        gap: var(--space-8);
+      }
+
+      .control-label {
+        font-size: 12px;
+        color: var(--color-subtle);
+        width: 80px;
+      }
+
+      .range-input {
+        flex: 1;
+      }
+
+      .section-tree {
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid var(--color-secondary);
+        border-radius: 4px;
+        padding: var(--space-8);
+        margin-bottom: var(--space-16);
+      }
+
+      .tree-item {
+        padding: var(--space-4) 0;
+        padding-left: var(--space-16);
+      }
+
+      .tree-item label {
+        display: flex;
+        align-items: center;
+        gap: var(--space-8);
+      }
+
+      .variable-list {
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid var(--color-secondary);
+        border-radius: 4px;
+        padding: var(--space-8);
+      }
+
+      .variable-item {
+        display: flex;
+        align-items: center;
+        gap: var(--space-8);
+        padding: var(--space-4) 0;
+      }
+
+      .variable-color {
+        width: 16px;
+        height: 16px;
+        border-radius: 4px;
+        border: 2px solid var(--color-secondary);
+      }
     </style>
   </head>
   <body>
@@ -217,30 +319,96 @@
         </div>
       </div>
 
-      <div class="section">
-        <div class="section-title">Global Controls</div>
-        <div class="controls">
-          <label class="control-item">
-            <input type="checkbox" id="autoHighlight" checked />
-            <span class="control-label">Auto-highlight formulas</span>
-          </label>
-          <label class="control-item">
-            <input type="checkbox" id="showTooltips" checked />
-            <span class="control-label">Show tooltips</span>
-          </label>
-          <label class="control-item">
-            <input type="checkbox" id="darkMode" />
-            <span class="control-label">Dark mode</span>
-          </label>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-title">Variable Controls</div>
+          <div class="variable-list" id="variableList">
+            <!-- Variables will be populated here -->
+          </div>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-title">Section Controls</div>
+          <div class="section-tree" id="sectionTree">
+            <!-- Section tree will be populated here -->
+          </div>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-title">Color Presets</div>
+          <div class="color-presets">
+            <div class="preset-color" style="background: #4a90e2"></div>
+            <div class="preset-color" style="background: #50e3c2"></div>
+            <div class="preset-color" style="background: #f5a623"></div>
+            <div class="preset-color" style="background: #d0021b"></div>
+            <div class="preset-color" style="background: #9013fe"></div>
+          </div>
+          <div class="color-controls">
+            <div class="control-group">
+              <span class="control-label">Hue</span>
+              <input
+                type="range"
+                class="range-input"
+                min="0"
+                max="360"
+                value="180"
+              />
+            </div>
+            <div class="control-group">
+              <span class="control-label">Saturation</span>
+              <input
+                type="range"
+                class="range-input"
+                min="0"
+                max="100"
+                value="70"
+              />
+            </div>
+            <div class="control-group">
+              <span class="control-label">Lightness</span>
+              <input
+                type="range"
+                class="range-input"
+                min="0"
+                max="100"
+                value="45"
+              />
+            </div>
+            <div class="control-group">
+              <span class="control-label">Opacity</span>
+              <input
+                type="range"
+                class="range-input"
+                min="0"
+                max="100"
+                value="100"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-title">Global Controls</div>
+          <div class="controls">
+            <label class="control-item">
+              <input type="checkbox" id="autoHighlight" checked />
+              <span class="control-label">Auto-highlight formulas</span>
+            </label>
+            <label class="control-item">
+              <input type="checkbox" id="showTooltips" checked />
+              <span class="control-label">Show tooltips</span>
+            </label>
+            <label class="control-item">
+              <input type="checkbox" id="darkMode" />
+              <span class="control-label">Dark mode</span>
+            </label>
+          </div>
         </div>
       </div>
 
-      <div class="section">
-        <div class="section-title">Actions</div>
-        <div class="button-group">
-          <button id="clearHighlights">Clear All</button>
-          <button id="applyHighlights" class="primary">Apply All</button>
-        </div>
+      <div class="button-group">
+        <button id="clearHighlights">Clear All</button>
+        <button id="saveSettings" class="primary">Save Settings</button>
       </div>
     </div>
 

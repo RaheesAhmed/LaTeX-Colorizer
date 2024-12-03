@@ -412,3 +412,89 @@
   border-color: var(--color-secondary);
   background: rgba(229, 233, 240, 0.1);
 }
+
+.variable-container-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-8) var(--space-16);
+  border-bottom: 1px solid var(--color-secondary);
+  margin: calc(var(--space-16) * -1) calc(var(--space-16) * -1) var(--space-16);
+  background: var(--color-primary);
+  border-radius: 6px 6px 0 0;
+}
+
+.variable-container-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+.close-button:hover {
+  opacity: 1;
+}
+
+.color-picker-container {
+  position: relative;
+}
+
+.color-controls {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border: 2px solid var(--color-secondary);
+  border-radius: 6px;
+  padding: var(--space-16);
+  box-shadow: var(--shadow-lg);
+  z-index: 1000000;
+  width: 200px;
+  margin-top: var(--space-8);
+}
+
+.color-controls input[type="range"] {
+  width: 100%;
+  margin: var(--space-4) 0;
+}
+
+.color-controls::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  right: 16px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 8px solid var(--color-secondary);
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .color-controls {
+    background: var(--color-secondary);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .color-controls::before {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+  }
+}
