@@ -437,14 +437,20 @@ function setupFormulaHandlers(formula) {
 function handleFormulaClick(formula) {
   console.log("Formula clicked:", formula);
 
-  // Initialize variable manager if not already done
+  // Get or create the variable manager instance
   if (!window.variableManager) {
     window.variableManager = new VariableManager();
     window.variableManager.init();
   }
 
-  // Show the formula controls panel
-  window.variableManager.showPanel(formula);
+  // Show the variable panel at the clicked formula's position
+  const rect = formula.element.getBoundingClientRect();
+  window.variableManager.showVariablePanel(rect);
+
+  // Parse and display variables from the formula
+  if (formula.variables && formula.variables.length > 0) {
+    window.variableManager.updateVariableList(formula.variables);
+  }
 }
 
 // Handle settings changes

@@ -1,5 +1,5 @@
 // Variable selection and color management system
-export class VariableManager {
+class VariableManager {
   constructor() {
     this.variables = new Map();
     this.selectedVariables = new Set();
@@ -16,16 +16,16 @@ export class VariableManager {
   setupColorPicker() {
     this.colorPicker = {
       colors: [
-        "#4CAF50", // Green
-        "#2196F3", // Blue
-        "#F44336", // Red
-        "#FFC107", // Amber
-        "#9C27B0", // Purple
-        "#FF9800", // Orange
-        "#795548", // Brown
-        "#607D8B", // Blue Grey
-        "#E91E63", // Pink
-        "#3F51B5", // Indigo
+        "#4CAF50",
+        "#2196F3",
+        "#F44336",
+        "#FFC107",
+        "#9C27B0",
+        "#FF9800",
+        "#795548",
+        "#607D8B",
+        "#E91E63",
+        "#3F51B5",
       ],
       activeIndex: 0,
     };
@@ -35,80 +35,36 @@ export class VariableManager {
     const panel = document.createElement("div");
     panel.className = "variable-panel";
     panel.innerHTML = `
-      <div class="formula-controls">
-        <h3>Formula Controls</h3>
-        <div class="variable-list">
-          ${this.createVariableList()}
-        </div>
-        <div class="size-controls">
-          <h4>Size</h4>
-          <div class="size-options">
-            <label>
-              <input type="radio" name="size" value="small">
-              Small
-            </label>
-            <label>
-              <input type="radio" name="size" value="standard" checked>
-              Standard
-            </label>
-            <label>
-              <input type="radio" name="size" value="large">
-              Large
-            </label>
-          </div>
-        </div>
-        <div class="width-controls">
-          <h4>Width</h4>
-          <div class="width-options">
-            <label>
-              <input type="radio" name="width" value="standard" checked>
-              Standard
-            </label>
-            <label>
-              <input type="radio" name="width" value="wide">
-              Wide
-            </label>
-          </div>
-        </div>
-        <div class="color-controls">
-          <h4>Color (beta)</h4>
-          <div class="color-options">
-            <label>
-              <input type="radio" name="color" value="automatic">
-              Automatic
-            </label>
-            <label>
-              <input type="radio" name="color" value="light" checked>
-              Light
-            </label>
-            <label>
-              <input type="radio" name="color" value="dark">
-              Dark
-            </label>
-          </div>
-        </div>
-        <button class="clear-all">Clear All</button>
+      <div class="variable-panel-header">
+        <h3>Variables</h3>
+        <button class="close-panel">×</button>
+      </div>
+      <div class="variable-list"></div>
+      <div class="color-picker">
+        <div class="color-swatches"></div>
+        <input type="color" class="custom-color" value="${this.activeColor}">
+      </div>
+      <div class="variable-actions">
+        <button class="clear-selections">Clear All</button>
+        <button class="apply-color">Apply Color</button>
       </div>
     `;
 
     document.body.appendChild(panel);
     this.panel = panel;
+    this.renderColorPicker();
   }
 
-  createVariableList() {
-    return Array.from(this.variables.entries())
+  renderColorPicker() {
+    const swatchesContainer = this.panel.querySelector(".color-swatches");
+    swatchesContainer.innerHTML = this.colorPicker.colors
       .map(
-        ([variable, data]) => `
-        <div class="variable-item">
-          <label class="variable-checkbox">
-            <input type="checkbox" 
-              ${this.selectedVariables.has(variable) ? "checked" : ""}
-              data-variable="${variable}">
-            <span class="variable-name">${variable}</span>
-          </label>
-          <div class="variable-color" style="background-color: ${
-            data.color || "transparent"
-          }"></div>
+        (color, index) => `
+        <div class="color-swatch ${
+          index === this.colorPicker.activeIndex ? "active" : ""
+        }"
+             style="background-color: ${color}"
+             data-color="${color}">
         </div>
       `
       )
@@ -116,70 +72,156 @@ export class VariableManager {
   }
 
   setupEventListeners() {
-    // Variable selection
-    this.panel.addEventListener("change", (e) => {
-      if (e.target.matches('input[type="checkbox"]')) {
-        const variable = e.target.dataset.variable;
-        if (e.target.checked) {
-          this.selectedVariables.add(variable);
-        } else {
-          this.selectedVariables.delete(variable);
+    // Color picker events
+    this.panel
+      .querySelector(".color-swatches")
+      .addEventListener("click", (e) => {
+        const swatch = e.target.closest(".color-swatch");
+        if (swatch) {
+          this.setActiveColor(swatch.dataset.color);
+          this.updateColorSwatchUI();
         }
-        this.updateVariableList();
+      });
+
+    // Custom color input
+    this.panel
+      .querySelector(".custom-color")
+      .addEventListener("change", (e) => {
+        this.setActiveColor(e.target.value);
+      });
+
+    // Panel controls
+    this.panel.querySelector(".close-panel").addEventListener("click", () => {
+      this.panel.classList.remove("visible");
+    });
+
+    this.panel
+      .querySelector(".clear-selections")
+      .addEventListener("click", () => {
+        this.clearSelections();
+      });
+
+    this.panel.querySelector(".apply-color").addEventListener("click", () => {
+      this.applyColorToSelected();
+    });
+
+    // Variable selection in formulas
+    document.addEventListener("mouseup", () => {
+      const selection = window.getSelection();
+      if (selection.toString().trim()) {
+        this.handleVariableSelection(selection);
       }
     });
 
-    // Clear all button
-    this.panel.querySelector(".clear-all").addEventListener("click", () => {
-      this.clearSelections();
-    });
-
-    // Size controls
-    this.panel.querySelectorAll('input[name="size"]').forEach((radio) => {
-      radio.addEventListener("change", (e) => {
-        this.updateFormulaSize(e.target.value);
-      });
-    });
-
-    // Width controls
-    this.panel.querySelectorAll('input[name="width"]').forEach((radio) => {
-      radio.addEventListener("change", (e) => {
-        this.updateFormulaWidth(e.target.value);
-      });
-    });
-
-    // Color controls
-    this.panel.querySelectorAll('input[name="color"]').forEach((radio) => {
-      radio.addEventListener("change", (e) => {
-        this.updateFormulaColor(e.target.value);
-      });
+    // Keyboard shortcuts
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        this.panel.classList.remove("visible");
+      }
     });
   }
 
-  showPanel(formula) {
-    const rect = formula.element.getBoundingClientRect();
-    this.panel.style.top = `${rect.bottom + window.scrollY + 10}px`;
-    this.panel.style.left = `${rect.left + window.scrollX}px`;
-    this.panel.classList.add("visible");
+  handleVariableSelection(selection) {
+    const range = selection.getRangeAt(0);
+    const container = range.commonAncestorContainer.parentElement;
 
-    // Parse and add variables from the formula
-    const variables = formula.variables || [];
-    variables.forEach((variable) => {
-      if (!this.variables.has(variable)) {
-        this.variables.set(variable, { color: null });
+    if (container.closest("[data-math-enhanced]")) {
+      const selectedText = selection.toString().trim();
+      if (this.isValidVariable(selectedText)) {
+        this.addVariable(selectedText, range);
+        this.showVariablePanel(range);
       }
-    });
+    }
+  }
 
+  isValidVariable(text) {
+    // Check if the selected text matches variable pattern
+    return /^[a-zA-Z]$/.test(text) || /^[a-zA-Z]_[a-zA-Z0-9]+$/.test(text);
+  }
+
+  addVariable(variable, range) {
+    if (!this.variables.has(variable)) {
+      this.variables.set(variable, {
+        occurrences: [],
+        color: null,
+      });
+    }
+
+    this.variables.get(variable).occurrences.push(range);
+    this.selectedVariables.add(variable);
     this.updateVariableList();
-  }
-
-  hidePanel() {
-    this.panel.classList.remove("visible");
   }
 
   updateVariableList() {
     const listContainer = this.panel.querySelector(".variable-list");
-    listContainer.innerHTML = this.createVariableList();
+    listContainer.innerHTML = Array.from(this.variables.entries())
+      .map(
+        ([variable, data]) => `
+        <div class="variable-item ${
+          this.selectedVariables.has(variable) ? "selected" : ""
+        }"
+             data-variable="${variable}">
+          <span class="variable-name">${variable}</span>
+          <span class="variable-color" style="background-color: ${
+            data.color || "transparent"
+          }"></span>
+          <span class="occurrence-count">${data.occurrences.length}</span>
+        </div>
+      `
+      )
+      .join("");
+  }
+
+  showVariablePanel(rangeOrRect) {
+    let top, left;
+
+    if (rangeOrRect instanceof Range) {
+      const rect = rangeOrRect.getBoundingClientRect();
+      top = rect.bottom + window.scrollY + 10;
+      left = rect.left + window.scrollX;
+    } else {
+      // Assume it's a DOMRect
+      top = rangeOrRect.bottom + window.scrollY + 10;
+      left = rangeOrRect.left + window.scrollX;
+    }
+
+    this.panel.style.top = `${top}px`;
+    this.panel.style.left = `${left}px`;
+    this.panel.classList.add("visible");
+  }
+
+  setActiveColor(color) {
+    this.activeColor = color;
+    this.panel.querySelector(".custom-color").value = color;
+  }
+
+  updateColorSwatchUI() {
+    const swatches = this.panel.querySelectorAll(".color-swatch");
+    swatches.forEach((swatch) => {
+      swatch.classList.toggle(
+        "active",
+        swatch.dataset.color === this.activeColor
+      );
+    });
+  }
+
+  applyColorToSelected() {
+    this.selectedVariables.forEach((variable) => {
+      const varData = this.variables.get(variable);
+      varData.color = this.activeColor;
+
+      varData.occurrences.forEach((range) => {
+        const span = document.createElement("span");
+        span.style.color = this.activeColor;
+        span.style.fontWeight = "bold";
+        span.textContent = variable;
+
+        range.deleteContents();
+        range.insertNode(span);
+      });
+    });
+
+    this.updateVariableList();
   }
 
   clearSelections() {
@@ -187,21 +229,42 @@ export class VariableManager {
     this.updateVariableList();
   }
 
-  updateFormulaSize(size) {
-    document.querySelectorAll(".formula-interactive").forEach((formula) => {
-      formula.dataset.size = size;
-    });
-  }
+  updateVariableList(variables = []) {
+    const variableList = this.panel.querySelector(".variable-list");
 
-  updateFormulaWidth(width) {
-    document.querySelectorAll(".formula-interactive").forEach((formula) => {
-      formula.dataset.width = width;
-    });
-  }
+    // Clear existing list
+    variableList.innerHTML = "";
 
-  updateFormulaColor(color) {
-    document.querySelectorAll(".formula-interactive").forEach((formula) => {
-      formula.dataset.color = color;
+    // Add variables to the list
+    variables.forEach((variable) => {
+      const variableItem = document.createElement("div");
+      variableItem.className = "variable-item";
+      variableItem.innerHTML = `
+        <label class="variable-label">
+          <input type="checkbox" 
+                 class="variable-checkbox" 
+                 value="${variable}" 
+                 ${this.selectedVariables.has(variable) ? "checked" : ""}>
+          <span class="variable-name">${variable}</span>
+        </label>
+        <div class="variable-color" 
+             style="background-color: ${
+               this.colorMap.get(variable) || this.activeColor
+             }">
+        </div>
+      `;
+
+      // Add event listeners
+      const checkbox = variableItem.querySelector(".variable-checkbox");
+      checkbox.addEventListener("change", (e) => {
+        if (e.target.checked) {
+          this.selectedVariables.add(variable);
+        } else {
+          this.selectedVariables.delete(variable);
+        }
+      });
+
+      variableList.appendChild(variableItem);
     });
   }
 }
