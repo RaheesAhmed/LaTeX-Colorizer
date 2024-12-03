@@ -282,3 +282,120 @@ window.addEventListener("unload", () => {
   formulaStore.formulas.clear();
   formulaStore.variables.clear();
 });
+
+// Parse variables from LaTeX with optimization
+function parseVariables(latex) {
+  // Check cache first
+  const cacheKey = `vars_${latex}`;
+  if (performanceCache.colorCache.has(cacheKey)) {
+    return performanceCache.colorCache.get(cacheKey);
+  }
+
+  console.log("Parsing variables from:", latex);
+  const variables = new Set();
+
+  try {
+    // Clean LaTeX before parsing
+    const cleanLatex = latex
+      .replace(/\\displaystyle/g, "")
+      .replace(/\\text\{[^}]+\}/g, "")
+      .replace(/\\left|\\right/g, "")
+      .replace(/\\begin\{[^}]+\}|\\end\{[^}]+\}/g, "")
+      .replace(/\\[a-zA-Z]+(?![a-zA-Z])/g, " ") // Remove LaTeX commands
+      .replace(/\{|\}/g, " ")
+      .trim();
+
+    // Common mathematical variables
+    const commonVars = new Set([
+      "x",
+      "y",
+      "z",
+      "n",
+      "i",
+      "j",
+      "k",
+      "a",
+      "b",
+      "c",
+      "α",
+      "β",
+      "γ",
+      "θ",
+      "φ",
+    ]);
+
+    // Variable patterns
+    const patterns = [
+      // Single letters (excluding numbers and operators)
+      /(?<!\\)[a-zA-Z](?![\d\s=+\-*/\\])/g,
+
+      // Greek letters
+      /\\(?:alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|omicron|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega)(?![a-zA-Z])/gi,
+
+      // Subscripted variables
+      /([a-zA-Z])_([a-zA-Z0-9]+)/g,
+
+      // Vector/matrix variables
+      /\\(?:vec|mathbf)\{([a-zA-Z])\}/g,
+    ];
+
+    // Process each pattern
+    patterns.forEach((pattern) => {
+      const matches = cleanLatex.matchAll(pattern);
+      for (const match of matches) {
+        const variable = cleanVariable(match[0]);
+        if (variable && !isLatexCommand(variable)) {
+          // Prioritize common mathematical variables
+          if (commonVars.has(variable)) {
+            variables.add(variable);
+          } else if (variable.length === 1 || variable.includes("_")) {
+            variables.add(variable);
+          }
+        }
+      }
+    });
+
+    // Cache the result
+    const result = Array.from(variables);
+    performanceCache.colorCache.set(cacheKey, result);
+    console.log("Parsed variables:", result);
+    return result;
+  } catch (error) {
+    console.error("Error parsing variables:", error);
+    return [];
+  }
+}
+
+// Clean variable name
+function cleanVariable(variable) {
+  try {
+    return variable
+      .replace(/^\\/, "")
+      .replace(/\{|\}/g, "")
+      .replace(/^(mathbf|vec)/, "")
+      .trim();
+  } catch (error) {
+    console.error("Error cleaning variable:", error);
+    return "";
+  }
+}
+
+// Check for LaTeX commands
+function isLatexCommand(str) {
+  const commands = new Set([
+    "sum",
+    "int",
+    "frac",
+    "sqrt",
+    "text",
+    "mathbf",
+    "mathrm",
+    "left",
+    "right",
+    "begin",
+    "end",
+    "cdot",
+    "times",
+  ]);
+  return commands.has(str.toLowerCase());
+}
