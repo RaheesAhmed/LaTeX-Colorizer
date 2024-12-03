@@ -9,10 +9,43 @@ const formulaStore = {
   variableColors: new Map(), // Store colors for each variable
 };
 
+// Performance optimization: Add cache system
+const performanceCache = {
+  formulaCache: new Map(), // Cache for parsed formulas
+  colorCache: new Map(), // Cache for computed colors
+  domCache: new WeakMap(), // Cache for DOM elements
+  sectionCache: new Map(), // Cache for section data
+  renderQueue: new Set(), // Queue for pending renders
+  isRendering: false, // Render lock
+  lastRender: 0, // Timestamp of last render
+  RENDER_THROTTLE: 16, // ~60fps throttle
+  BATCH_SIZE: 10, // Number of formulas to process in one batch
+};
+
 // Initialize when DOM is ready
 function init() {
   console.log("Initializing LaTeX Formula Colorizer...");
 
+  // Performance: Use IntersectionObserver for lazy loading
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const element = entry.target;
+          if (!performanceCache.formulaCache.has(element)) {
+            processFormula(element);
+          }
+          observer.unobserve(element);
+        }
+      });
+    },
+    {
+      rootMargin: "50px",
+      threshold: 0.1,
+    }
+  );
+
+  // Find all math elements
   const mathElements = document.querySelectorAll(".mwe-math-element");
   console.log(`Found ${mathElements.length} math elements`);
 
@@ -21,8 +54,20 @@ function init() {
     return;
   }
 
-  detectFormulas();
+  // Performance: Batch process formulas
+  Array.from(mathElements).forEach((element, index) => {
+    observer.observe(element);
+    if (index < 10) {
+      // Immediately process first 10 formulas
+      processFormula(element);
+    }
+  });
+
   setupControls();
+  initializeEventHandlers();
+
+  // Start render loop
+  requestAnimationFrame(renderLoop);
 
   // Listen for messages from popup
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -45,6 +90,230 @@ function init() {
     return true;
   });
 }
+
+// Performance: Batch process formulas
+function processFormula(element) {
+  try {
+    const id =
+      element.getAttribute("data-formula-id") ||
+      `formula-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    element.setAttribute("data-formula-id", id);
+
+    // Check cache first
+    if (performanceCache.formulaCache.has(id)) {
+      return performanceCache.formulaCache.get(id);
+    }
+
+    // Get LaTeX content
+    const latex = extractLatex(element);
+    if (!latex) return null;
+
+    // Process formula data
+    const formula = {
+      id,
+      latex,
+      element,
+      variables: parseVariables(latex),
+      section: findSection(element),
+      timestamp: Date.now(),
+    };
+
+    // Cache the result
+    performanceCache.formulaCache.set(id, formula);
+    performanceCache.domCache.set(element, {
+      handlers: new Map(),
+      state: new Map(),
+    });
+
+    // Add to formula store
+    formulaStore.formulas.set(id, formula);
+    formula.variables.forEach((v) => formulaStore.variables.add(v));
+
+    // Setup event handlers
+    setupFormulaHandlers(formula);
+
+    return formula;
+  } catch (error) {
+    console.error("Error processing formula:", error);
+    return null;
+  }
+}
+
+// Performance: Extract LaTeX with caching
+function extractLatex(element) {
+  const cacheKey = element.innerHTML;
+  if (performanceCache.colorCache.has(cacheKey)) {
+    return performanceCache.colorCache.get(cacheKey);
+  }
+
+  const mathML = element.querySelector(".mwe-math-mathml-a11y");
+  const fallbackImg = element.querySelector(".mwe-math-fallback-image-inline");
+
+  let latex = "";
+  if (mathML) {
+    const annotation = mathML.querySelector(
+      'annotation[encoding="application/x-tex"]'
+    );
+    latex = annotation ? annotation.textContent : "";
+  } else if (fallbackImg) {
+    latex = fallbackImg.getAttribute("alt");
+  }
+
+  performanceCache.colorCache.set(cacheKey, latex);
+  return latex;
+}
+
+// Performance: Optimize event handlers
+function setupFormulaHandlers(formula) {
+  const domCache = performanceCache.domCache.get(formula.element);
+  if (!domCache) return;
+
+  // Remove existing handlers
+  if (domCache.handlers.size > 0) {
+    domCache.handlers.forEach((handler, type) => {
+      formula.element.removeEventListener(type, handler);
+    });
+    domCache.handlers.clear();
+  }
+
+  // Add optimized handlers
+  const clickHandler = debounce((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleFormulaClick(formula);
+  }, 100);
+
+  const enterHandler = debounce(() => {
+    if (!performanceCache.isRendering) {
+      showTooltip(formula);
+    }
+  }, 50);
+
+  const leaveHandler = debounce(() => {
+    hideTooltip();
+  }, 50);
+
+  formula.element.addEventListener("click", clickHandler);
+  formula.element.addEventListener("mouseenter", enterHandler);
+  formula.element.addEventListener("mouseleave", leaveHandler);
+
+  domCache.handlers.set("click", clickHandler);
+  domCache.handlers.set("mouseenter", enterHandler);
+  domCache.handlers.set("mouseleave", leaveHandler);
+
+  // Add visual indicator
+  formula.element.style.cursor = "pointer";
+  formula.element.classList.add("formula-interactive");
+}
+
+// Performance: Implement render loop
+function renderLoop(timestamp) {
+  if (
+    !performanceCache.isRendering &&
+    performanceCache.renderQueue.size > 0 &&
+    timestamp - performanceCache.lastRender >= performanceCache.RENDER_THROTTLE
+  ) {
+    performanceCache.isRendering = true;
+    const batch = Array.from(performanceCache.renderQueue).slice(
+      0,
+      performanceCache.BATCH_SIZE
+    );
+
+    batch.forEach((id) => {
+      const formula = formulaStore.formulas.get(id);
+      if (formula) {
+        updateFormulaDisplay(formula);
+      }
+      performanceCache.renderQueue.delete(id);
+    });
+
+    performanceCache.lastRender = timestamp;
+    performanceCache.isRendering = false;
+  }
+
+  requestAnimationFrame(renderLoop);
+}
+
+// Performance: Optimize formula display updates
+function updateFormulaDisplay(formula) {
+  const domCache = performanceCache.domCache.get(formula.element);
+  if (!domCache) return;
+
+  const currentState = JSON.stringify({
+    selected: Array.from(formulaStore.selectedVariables),
+    colors: Array.from(formulaStore.variableColors),
+  });
+
+  if (domCache.state.get("displayState") === currentState) {
+    return; // No changes, skip update
+  }
+
+  const hasSelected = formula.variables.some((v) =>
+    formulaStore.selectedVariables.has(v)
+  );
+
+  if (hasSelected) {
+    formula.element.classList.add("formula-highlight");
+    const color = getVariableColor(
+      formula.variables.find((v) => formulaStore.selectedVariables.has(v))
+    );
+    formula.element.style.setProperty("--highlight-color", color);
+  } else {
+    formula.element.classList.remove("formula-highlight");
+    formula.element.style.removeProperty("--highlight-color");
+  }
+
+  domCache.state.set("displayState", currentState);
+}
+
+// Performance: Debounce utility
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+// Performance: Optimize highlight updates
+function highlightVariables() {
+  console.log(
+    "Highlighting variables:",
+    Array.from(formulaStore.selectedVariables)
+  );
+
+  // Add formulas to render queue instead of updating immediately
+  formulaStore.formulas.forEach((formula) => {
+    performanceCache.renderQueue.add(formula.id);
+  });
+}
+
+// Memory management: Cleanup unused cache
+function cleanupCache() {
+  const now = Date.now();
+  const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+  performanceCache.formulaCache.forEach((formula, id) => {
+    if (now - formula.timestamp > CACHE_TTL) {
+      performanceCache.formulaCache.delete(id);
+    }
+  });
+
+  // Cleanup color cache
+  if (performanceCache.colorCache.size > 1000) {
+    const oldestEntries = Array.from(
+      performanceCache.colorCache.entries()
+    ).slice(0, performanceCache.colorCache.size - 1000);
+    oldestEntries.forEach(([key]) => performanceCache.colorCache.delete(key));
+  }
+}
+
+// Run cache cleanup periodically
+setInterval(cleanupCache, 60000); // Every minute
 
 // Find containing section for a formula
 function findSection(element) {
@@ -82,89 +351,6 @@ function handleSettingsChange(settings) {
     console.log("Applying highlights to all formulas");
     highlightVariables();
   }
-}
-
-// Detect and process formulas
-function detectFormulas() {
-  console.log("Detecting formulas...");
-  const mathElements = document.querySelectorAll(".mwe-math-element");
-
-  mathElements.forEach((element, index) => {
-    try {
-      // Get LaTeX content
-      const mathML = element.querySelector(".mwe-math-mathml-a11y");
-      const fallbackImg = element.querySelector(
-        ".mwe-math-fallback-image-inline"
-      );
-
-      let latex = "";
-      if (mathML) {
-        const annotation = mathML.querySelector(
-          'annotation[encoding="application/x-tex"]'
-        );
-        latex = annotation ? annotation.textContent : "";
-      } else if (fallbackImg) {
-        latex = fallbackImg.getAttribute("alt");
-      }
-
-      if (latex) {
-        console.log(`Processing formula ${index}:`, latex);
-
-        const id = `formula-${index}`;
-        element.setAttribute("data-formula-id", id);
-
-        // Process formula
-        const variables = parseVariables(latex);
-        console.log(`Found variables:`, variables);
-
-        const formula = {
-          id,
-          latex,
-          element,
-          variables,
-          section: findSection(element),
-        };
-
-        // Store formula data
-        formulaStore.formulas.set(id, formula);
-        variables.forEach((v) => formulaStore.variables.add(v));
-
-        // Remove existing listeners to prevent duplicates
-        element.removeEventListener("click", handleFormulaClick);
-        element.removeEventListener("mouseenter", showTooltip);
-        element.removeEventListener("mouseleave", hideTooltip);
-
-        // Add click handler
-        element.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          console.log("Formula clicked:", id);
-          handleFormulaClick(formula);
-        });
-
-        // Add hover handler
-        element.addEventListener("mouseenter", () => {
-          console.log("Formula hover:", id);
-          showTooltip(formula);
-        });
-
-        element.addEventListener("mouseleave", () => {
-          console.log("Formula unhover:", id);
-          hideTooltip();
-        });
-
-        // Add visual indicator that element is interactive
-        element.style.cursor = "pointer";
-        element.classList.add("formula-interactive");
-      }
-    } catch (error) {
-      console.error("Error processing formula:", error);
-    }
-  });
-
-  console.log("Formula detection complete");
-  console.log("Total formulas:", formulaStore.formulas.size);
-  console.log("Total variables:", formulaStore.variables.size);
 }
 
 // Parse variables from LaTeX
@@ -518,36 +704,6 @@ function hexToHSL(hex) {
   }
 
   return `hsl(${Math.round(h * 360)}, 70%, 45%)`;
-}
-
-// Highlight selected variables
-function highlightVariables() {
-  console.log(
-    "Highlighting variables:",
-    Array.from(formulaStore.selectedVariables)
-  );
-
-  // Clear all highlights
-  document.querySelectorAll(".formula-highlight").forEach((el) => {
-    el.classList.remove("formula-highlight");
-    el.style.removeProperty("--highlight-color");
-  });
-
-  // Add highlights for selected variables
-  if (formulaStore.selectedVariables.size > 0) {
-    formulaStore.formulas.forEach((formula) => {
-      const selectedVarsInFormula = formula.variables.filter((v) =>
-        formulaStore.selectedVariables.has(v)
-      );
-
-      if (selectedVarsInFormula.length > 0) {
-        formula.element.classList.add("formula-highlight");
-        // Use the color of the first selected variable
-        const color = getVariableColor(selectedVarsInFormula[0]);
-        formula.element.style.setProperty("--highlight-color", color);
-      }
-    });
-  }
 }
 
 // Setup controls panel
